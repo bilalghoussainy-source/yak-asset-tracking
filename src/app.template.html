@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Asset Tracking</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#f4f6f9;--surface:#fff;--surface2:#f0f2f6;
+  --border:#dde1ea;--border2:#c8cdd9;
+  --blue:#576A84;--blue-lt:#EEF1F5;--blue-dk:#3d4f63;
+  --yellow:#FFC000;--yellow-lt:#FFF8E1;--yellow-dk:#b38600;
+  --green:#1a8a4a;--green-lt:#e4f5ec;
+  --red:#c0392b;--red-lt:#fde8e6;
+  --amber:#b38600;--amber-lt:#FFF8E1;
+  --text:#1a1d2e;--text2:#4b5370;--text3:#9198b4;
+  --radius:8px;
+  --shadow:0 2px 12px rgba(87,106,132,0.10);
+  --shadow-md:0 4px 20px rgba(87,106,132,0.15);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13.5px}
+
+/* LOCK SCREEN */
+#lock-screen{display:none;position:fixed;inset:0;background:var(--blue);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+#lock-screen.show{display:flex}
+.lock-icon{font-size:56px;opacity:0.9}
+.lock-title{font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.5px}
+.lock-sub{font-size:14px;color:rgba(255,255,255,0.65);text-align:center;max-width:340px;line-height:1.6}
+.lock-badge{background:var(--yellow);color:#1a1000;font-size:12px;font-weight:700;padding:6px 18px;border-radius:20px;margin-top:4px}
+
+/* SYNC BANNER */
+#sync-banner{display:none;background:#fff;border-bottom:1px solid var(--border);padding:6px 28px;font-size:12px;font-weight:600;color:var(--text2);align-items:center;gap:10px}
+#sync-banner.show{display:flex}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+.sync-dot.busy{background:var(--amber);animation:blink .8s ease-in-out infinite}
+.sync-dot.err{background:var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* HEADER */
+header{background:#fff;border-bottom:3px solid var(--yellow);padding:0 28px;height:56px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(87,106,132,0.10);position:sticky;top:0;z-index:200}
+.logo-box{width:32px;height:32px;background:linear-gradient(135deg,var(--blue) 60%,var(--yellow) 100%);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo-text{font-size:15px;font-weight:700;color:var(--blue);letter-spacing:-0.3px}
+.logo-text span{color:var(--yellow)}
+.header-sub{font-size:11px;color:var(--text3);margin-left:2px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.live-stats{display:flex;gap:6px;align-items:center}
+.stat-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.stat-chip .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green)}.dot-red{background:var(--red)}.dot-yellow{background:var(--yellow)}.dot-blue{background:var(--blue)}
+#conflict-chip{display:none;background:var(--red-lt);border-color:#fca5a5;color:var(--red);cursor:pointer}
+#conflict-chip.has-conflicts{display:flex}
+
+/* TAB BAR */
+.tab-bar{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;display:flex;gap:0;box-shadow:0 1px 4px rgba(87,106,132,0.06);overflow-x:auto}
+.tab-btn{padding:12px 18px 10px;background:none;border:none;border-bottom:3px solid transparent;color:var(--text2);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap;flex-shrink:0}
+.tab-btn:hover{color:var(--blue);background:var(--blue-lt);border-radius:6px 6px 0 0}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--yellow);font-weight:700}
+.tab-count{display:inline-block;background:var(--surface2);color:var(--text3);font-size:10px;font-family:'JetBrains Mono',monospace;padding:1px 6px;border-radius:20px;margin-left:5px;vertical-align:middle;font-weight:500}
+.tab-btn.active .tab-count{background:var(--yellow-lt);color:var(--yellow-dk)}
+
+/* MAIN */
+.main{padding:22px 28px;max-width:1800px;margin:0 auto}
+.tab-pane{display:none}.tab-pane.active{display:block}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:900px){.dash-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.dash-grid{grid-template-columns:1fr}}
+.kpi-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:pointer;transition:transform 0.12s,box-shadow 0.12s}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.kpi-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px}
+.kpi-received::before{background:var(--green)}.kpi-retired::before{background:var(--red)}.kpi-transfer::before{background:var(--yellow)}.kpi-conflicts::before{background:var(--red)}
+.kpi-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px}
+.kpi-value{font-size:32px;font-weight:700;line-height:1;color:var(--text);font-family:'JetBrains Mono',monospace}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.kpi-icon{position:absolute;right:16px;top:16px;font-size:26px;opacity:0.15}
+.kpi-conflicts .kpi-value{color:var(--red)}.kpi-conflicts .kpi-label{color:var(--red)}
+.dash-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+.dash-card-header{padding:13px 18px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;gap:8px}
+.dash-card-header h3{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.6px;flex:1}
+.dash-card-body{padding:16px 18px}
+.dash-summary-bar{background:var(--blue);border-radius:var(--radius);padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;box-shadow:var(--shadow-md)}
+.dsb-item{display:flex;flex-direction:column;align-items:center;min-width:80px}
+.dsb-val{font-size:22px;font-weight:700;color:#fff;font-family:'JetBrains Mono',monospace;line-height:1}
+.dsb-label{font-size:10px;font-weight:600;color:rgba(255,255,255,0.65);text-transform:uppercase;letter-spacing:0.5px;margin-top:3px}
+.dsb-div{width:1px;background:rgba(255,255,255,0.2);align-self:stretch}
+.dsb-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end}
+.dsb-title{font-size:13px;font-weight:700;color:#fff}
+.dsb-sub{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px}
+.conflict-list{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
+.conflict-item{background:var(--red-lt);border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;display:flex;align-items:flex-start;gap:10px}
+.conflict-tag{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:var(--red);color:#fff;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:1px}
+.conflict-desc{font-size:12px;color:var(--red);line-height:1.5}
+.no-conflicts{text-align:center;padding:24px 0;color:var(--text3);font-size:13px}
+.no-conflicts .icon{font-size:22px;margin-bottom:6px}
+.activity-feed{display:flex;flex-direction:column;gap:0;max-height:260px;overflow-y:auto}
+.activity-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.activity-body{flex:1;min-width:0}
+.activity-text{font-size:12.5px;color:var(--text);line-height:1.4}
+.activity-text strong{color:var(--blue)}
+.activity-time{font-size:10.5px;color:var(--text3);margin-top:2px;font-family:'JetBrains Mono',monospace}
+.activity-action{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0;margin-top:2px}
+.act-add{background:var(--green-lt);color:var(--green)}
+.act-edit{background:var(--blue-lt);color:var(--blue)}
+.act-delete{background:var(--red-lt);color:var(--red)}
+.act-import{background:var(--yellow-lt);color:var(--yellow-dk)}
+
+/* REFERENCE DATA BAR */
+.ref-bar{background:#fff;border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--radius);padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow)}
+.ref-bar-label{font-size:11.5px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px}
+.ref-status{font-size:11.5px;color:var(--text3);margin-left:auto}
+.ref-status.loaded{color:var(--green);font-weight:600}
+
+/* IMPORT BAR */
+.import-bar{background:#fff;border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:var(--radius);padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow)}
+.import-bar-label{font-size:11.5px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;margin-right:auto;display:flex;align-items:center;gap:6px}
+.import-file-btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;border:1.5px dashed var(--border2);background:var(--blue-lt);color:var(--blue);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all 0.14s}
+.import-file-btn:hover{border-color:var(--blue);background:#dce2ea}
+.import-file-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.import-hint{font-size:11px;color:var(--text3)}
+
+/* IMPORT RESULT */
+.import-result{border-radius:7px;padding:9px 14px;font-size:12.5px;font-weight:500;margin-bottom:14px;display:none;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.import-result.show{display:flex}
+.import-result.ok{background:var(--green-lt);border:1px solid #86efac;color:var(--green)}
+.import-result.err{background:var(--red-lt);border:1px solid #fca5a5;color:var(--red)}
+.import-result.warn{background:var(--yellow-lt);border:1px solid var(--yellow);color:var(--yellow-dk)}
+
+/* FORM CARD */
+.form-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;margin-bottom:18px;box-shadow:var(--shadow)}
+.card-title{font-size:11.5px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title-bar{width:3px;height:14px;border-radius:2px;background:var(--yellow);flex-shrink:0}
+#tab2 .card-title-bar{background:var(--red)}
+#tab3 .card-title-bar{background:var(--yellow)}
+.form-section-label{grid-column:1/-1;font-size:10.5px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.6px;padding:9px 0 2px;border-top:1px solid var(--yellow);margin-top:2px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:11px 13px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field.full{grid-column:1/-1}
+.field label{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.2px}
+.req{color:var(--red);font-weight:700}
+.field input,.field textarea,.field select{background:#fff;border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;padding:7px 10px;transition:border-color 0.14s,box-shadow 0.14s;outline:none;width:100%}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3);font-size:12px}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(87,106,132,0.15)}
+.field input.error,.field select.error,.field .ss-wrap.error .ss-single-selected{border-color:var(--red)!important;box-shadow:0 0 0 3px rgba(192,57,43,0.1)!important;background:#fffafa!important}
+.field input.conflict-warn{border-color:var(--red);background:#fff8f8}
+.conflict-inline{font-size:11px;color:var(--red);font-weight:600;margin-top:2px;display:none}
+.conflict-inline.show{display:block}
+.field textarea{resize:vertical;min-height:64px}
+.field select:disabled{background:var(--surface2);color:var(--text3);cursor:not-allowed}
+
+/* KEEP-PREVIOUS CHECKBOX */
+.keep-prev-row{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--yellow-lt);border:1px solid var(--yellow);border-radius:6px;margin-top:4px}
+.keep-prev-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
+.keep-prev-row label{font-size:12px;font-weight:600;color:var(--yellow-dk);cursor:pointer;user-select:none}
+.keep-prev-row span{font-size:11px;color:var(--amber);margin-left:4px}
+
+/* SEARCHABLE SELECT (slim-select style via native datalist fallback) */
+.ss-wrap{position:relative;width:100%}
+.ss-input{width:100%;background:#fff;border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;padding:7px 28px 7px 10px;outline:none;transition:border-color 0.14s,box-shadow 0.14s;cursor:pointer}
+.ss-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(87,106,132,0.15)}
+.ss-input.error{border-color:var(--red);box-shadow:0 0 0 3px rgba(192,57,43,0.1);background:#fffafa}
+.ss-caret{position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);font-size:11px}
+.ss-dropdown{display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1px solid var(--border2);border-radius:6px;box-shadow:var(--shadow-md);z-index:400;max-height:220px;overflow:hidden;flex-direction:column}
+.ss-dropdown.open{display:flex}
+.ss-search{padding:7px 9px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ss-search input{width:100%;border:1px solid var(--border2);border-radius:5px;font-family:'Inter',sans-serif;font-size:12.5px;padding:5px 8px;outline:none;color:var(--text)}
+.ss-search input:focus{border-color:var(--blue)}
+.ss-list{overflow-y:auto;flex:1}
+.ss-option{padding:7px 11px;font-size:13px;cursor:pointer;transition:background 0.1s;color:var(--text)}
+.ss-option:hover,.ss-option.highlighted{background:var(--blue-lt);color:var(--blue)}
+.ss-option.selected{background:var(--yellow-lt);color:var(--yellow-dk);font-weight:600}
+.ss-option.disabled{color:var(--text3);cursor:default;font-style:italic;font-size:12px;background:var(--surface2)}
+.ss-placeholder{color:var(--text3)}
+.ss-empty{padding:10px 11px;font-size:12.5px;color:var(--text3);font-style:italic}
+
+/* BUTTONS */
+.btn{padding:7px 16px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.14s;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-dk);box-shadow:0 3px 10px rgba(87,106,132,0.30);transform:translateY(-1px)}
+.btn-cancel{background:#fff;color:var(--text2);border:1px solid var(--border2)}
+.btn-cancel:hover{background:var(--surface2)}
+.btn-danger{background:#fff;color:var(--red);border:1px solid var(--border)}
+.btn-danger:hover{background:var(--red-lt);border-color:var(--red)}
+.btn-export{background:#fff;color:var(--blue);border:1px solid var(--border)}
+.btn-export:hover{background:var(--blue-lt);border-color:var(--blue)}
+.btn-tpl{background:#fff;color:var(--blue);border:1px solid var(--border2)}
+.btn-tpl:hover{background:var(--blue-lt);border-color:var(--blue)}
+.btn-sm{padding:3px 9px;font-size:11.5px;border-radius:5px}
+.btn-edit{background:var(--blue-lt);color:var(--blue);border:1px solid rgba(87,106,132,0.25)}
+.btn-edit:hover{background:#dce2ea}
+.btn-del{background:var(--red-lt);color:var(--red);border:1px solid rgba(192,57,43,0.18)}
+.btn-del:hover{background:#f9d0cc}
+#tab2 .btn-primary{background:var(--red)}
+#tab2 .btn-primary:hover{background:#a93226;box-shadow:0 3px 10px rgba(192,57,43,0.22)}
+#tab3 .btn-primary{background:var(--yellow);color:#1a1000}
+#tab3 .btn-primary:hover{background:#e6ad00;box-shadow:0 3px 10px rgba(179,134,0,0.28)}
+.form-actions{display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap}
+
+/* EDIT BANNER */
+.edit-mode-banner{background:var(--yellow-lt);border:1px solid var(--yellow);border-radius:6px;padding:7px 13px;color:var(--yellow-dk);font-size:12.5px;font-weight:600;margin-bottom:11px;display:none;align-items:center;gap:8px}
+.edit-mode-banner.show{display:flex}
+
+/* TABLE */
+.table-section{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.table-header{padding:12px 16px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface2)}
+.table-header h3{font-size:12.5px;font-weight:700;color:var(--blue);margin-right:auto}
+.search-box{position:relative;flex:1;min-width:150px;max-width:240px}
+.search-box input{width:100%;background:#fff;border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:12.5px;padding:5px 9px 5px 28px;outline:none;transition:border-color 0.14s}
+.search-box input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(87,106,132,0.15)}
+.search-box input::placeholder{color:var(--text3)}
+.search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;pointer-events:none}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:500px}
+thead tr{background:var(--blue)}
+th{text-align:left;padding:8px 12px;font-size:10.5px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;border-bottom:2px solid var(--yellow)}
+td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:background 0.1s}
+tbody tr:hover{background:#f7f9fe}
+tbody tr.conflict-row{background:#fff5f5}
+.actions-col{display:flex;gap:4px}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.pill-green{background:var(--green-lt);color:var(--green)}.pill-blue{background:var(--blue-lt);color:var(--blue)}.pill-amber{background:var(--amber-lt);color:var(--amber)}.pill-red{background:var(--red-lt);color:var(--red)}.pill-gray{background:var(--surface2);color:var(--text2)}
+.conflict-badge{display:inline-flex;align-items:center;gap:3px;background:var(--red-lt);color:var(--red);border:1px solid #fca5a5;border-radius:4px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px}
+
+/* EMPTY / MODAL / NOTIF / AUDIT */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-state .icon{font-size:28px;margin-bottom:7px}
+.empty-state p{font-size:13px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.18s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:12px;box-shadow:0 12px 40px rgba(87,106,132,0.22);width:580px;max-width:96vw;max-height:86vh;overflow:hidden;display:flex;flex-direction:column;transform:translateY(12px);transition:transform 0.18s}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.modal-header h3{font-size:14px;font-weight:700;flex:1;color:var(--blue)}
+.modal-close{background:none;border:none;font-size:17px;color:var(--text3);cursor:pointer;padding:2px 6px;border-radius:4px}
+.modal-close:hover{background:var(--blue-lt);color:var(--blue)}
+.modal-body{padding:16px 20px;overflow-y:auto;flex:1}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+.error-list{list-style:none;display:flex;flex-direction:column;gap:5px}
+.error-list li{background:var(--red-lt);border:1px solid #fca5a5;border-radius:6px;padding:7px 11px;font-size:12.5px;color:var(--red);display:flex;gap:8px;align-items:baseline}
+.error-list li .row-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;white-space:nowrap;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.warn-list li{background:var(--yellow-lt);border:1px solid #fcd34d;color:var(--yellow-dk)}
+.warn-list li .row-badge{background:var(--yellow-dk)}
+.ok-summary{background:var(--green-lt);border:1px solid #86efac;border-radius:7px;padding:11px 15px;color:var(--green);font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px}
+.section-divider{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;margin:13px 0 7px}
+.notif{position:fixed;bottom:20px;right:20px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 15px;color:var(--text);font-size:13px;font-weight:500;box-shadow:var(--shadow-md);display:flex;align-items:center;gap:8px;transform:translateY(10px);opacity:0;transition:all 0.2s;z-index:999;max-width:340px}
+.notif.show{opacity:1;transform:translateY(0)}
+.notif.success{border-left:3px solid var(--green)}.notif.error{border-left:3px solid var(--red)}.notif.info{border-left:3px solid var(--blue)}.notif.warning{border-left:3px solid var(--yellow)}
+.audit-empty{text-align:center;padding:30px;color:var(--text3);font-size:13px}
+.al-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.al-chip{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--text2);font-size:11.5px;font-weight:600;cursor:pointer;transition:all 0.12s}
+.al-chip:hover,.al-chip.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+@media(max-width:700px){.main{padding:12px}.tab-bar,header{padding-left:12px;padding-right:12px}.form-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.form-grid{grid-column:1fr}.tab-btn{padding:10px 10px;font-size:12px}}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lock-screen">
+  <div class="lock-icon">🔒</div>
+  <div class="lock-title">Tool Not Active</div>
+  <div class="lock-sub">This Asset Tracking tool is currently not available. Please contact your project manager to enable access.</div>
+  <div class="lock-badge" id="lock-client-name"></div>
+</div>
+
+<!-- SYNC BANNER -->
+<div id="sync-banner">
+  <span class="sync-dot" id="sync-dot"></span>
+  <span id="sync-txt">Connecting…</span>
+  <span style="margin-left:auto;font-size:11px;color:var(--text3)" id="sync-last"></span>
+</div>
+
+<!-- CONFIG WARNING (no CLIENT_ID) -->
+<div id="config-warning" style="display:none;background:var(--red-lt);border-bottom:2px solid #c0392b;padding:9px 28px;font-size:12.5px;font-weight:600;color:#c0392b;align-items:center;gap:10px">
+  ⚠️ <strong>No client specified.</strong> Open this app with your client code in the URL, e.g. <code style="background:#f9d0cc;padding:1px 5px;border-radius:3px" id="config-warning-example"></code>
+  <button onclick="this.parentElement.style.display='none'" style="margin-left:auto;background:#c0392b;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">Dismiss</button>
+</div>
+
+<header>
+  <div class="logo-box">📦</div>
+  <div class="logo-text"><span>Asset</span> Tracking</div>
+  <span class="header-sub" id="client-label">— Asset Registration &amp; Management System</span>
+  <div class="header-right">
+    <div class="live-stats">
+      <div class="stat-chip"><span class="dot dot-green"></span><span id="hs-recv">0</span> Received</div>
+      <div class="stat-chip"><span class="dot dot-red"></span><span id="hs-ret">0</span> Retired</div>
+      <div class="stat-chip"><span class="dot dot-yellow"></span><span id="hs-tr">0</span> Transfers</div>
+      <div class="stat-chip" id="conflict-chip" onclick="switchTab('tab0',document.querySelector('.tab-btn'))">⚠ <span id="hs-conf">0</span> Conflicts</div>
+    </div>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('tab0',this)">📊 Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('tab1',this)">✅ Received <span class="tab-count" id="count1">0</span></button>
+  <button class="tab-btn" onclick="switchTab('tab2',this)">🗃️ Retired <span class="tab-count" id="count2">0</span></button>
+  <button class="tab-btn" onclick="switchTab('tab3',this)">🔄 Transfers <span class="tab-count" id="count3">0</span></button>
+  <button class="tab-btn" onclick="switchTab('tab4',this)">📋 Audit Log <span class="tab-count" id="count4">0</span></button>
+</div>
+
+<div class="main">
+
+<!-- ═══════════ TAB 0: DASHBOARD ═══════════ -->
+<div class="tab-pane active" id="tab0">
+  <div class="dash-summary-bar">
+    <div class="dsb-item"><div class="dsb-val" id="dsb-total">0</div><div class="dsb-label">Total Changes</div></div>
+    <div class="dsb-div"></div>
+    <div class="dsb-item"><div class="dsb-val" id="dsb-recv">0</div><div class="dsb-label">Received</div></div>
+    <div class="dsb-div"></div>
+    <div class="dsb-item"><div class="dsb-val" id="dsb-ret">0</div><div class="dsb-label">Retired</div></div>
+    <div class="dsb-div"></div>
+    <div class="dsb-item"><div class="dsb-val" id="dsb-tr">0</div><div class="dsb-label">Transfers</div></div>
+    <div class="dsb-div"></div>
+    <div class="dsb-item"><div class="dsb-val" id="dsb-conf" style="color:var(--yellow)">0</div><div class="dsb-label">Conflicts</div></div>
+    <div class="dsb-right"><div class="dsb-title" id="dsb-client">Asset Count Session</div><div class="dsb-sub" id="dsb-time">Last updated: —</div></div>
+  </div>
+  <div class="dash-grid">
+    <div class="kpi-card kpi-received" onclick="switchTab('tab1',document.querySelectorAll('.tab-btn')[1])"><div class="kpi-icon">✅</div><div class="kpi-label">Received Assets</div><div class="kpi-value" id="kpi-recv">0</div><div class="kpi-sub">Click to view →</div></div>
+    <div class="kpi-card kpi-retired" onclick="switchTab('tab2',document.querySelectorAll('.tab-btn')[2])"><div class="kpi-icon">🗃️</div><div class="kpi-label">Retired Assets</div><div class="kpi-value" id="kpi-ret">0</div><div class="kpi-sub">Click to view →</div></div>
+    <div class="kpi-card kpi-transfer" onclick="switchTab('tab3',document.querySelectorAll('.tab-btn')[3])"><div class="kpi-icon">🔄</div><div class="kpi-label">Transfers / Updates</div><div class="kpi-value" id="kpi-tr">0</div><div class="kpi-sub">Click to view →</div></div>
+    <div class="kpi-card kpi-conflicts" onclick="switchTab('tab4',document.querySelectorAll('.tab-btn')[4])"><div class="kpi-icon">⚠️</div><div class="kpi-label">Tag ID Conflicts</div><div class="kpi-value" id="kpi-conf">0</div><div class="kpi-sub">Click to review →</div></div>
+  </div>
+  <div class="dash-card">
+    <div class="dash-card-header"><h3>⚠️ Conflict Detection</h3><span style="font-size:11px;color:var(--text3)">Tag IDs appearing in more than one section</span></div>
+    <div class="dash-card-body"><div class="conflict-list" id="conflict-list"><div class="no-conflicts"><div class="icon">✅</div><p>No conflicts detected</p></div></div></div>
+  </div>
+  <div class="dash-card">
+    <div class="dash-card-header"><h3>🕐 Recent Activity</h3><button class="btn btn-sm btn-export" onclick="switchTab('tab4',document.querySelectorAll('.tab-btn')[4])">View Full Log →</button></div>
+    <div class="dash-card-body" style="padding:8px 18px"><div class="activity-feed" id="recent-activity"><div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">No activity yet.</div></div></div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 1: RECEIVED ═══════════ -->
+<div class="tab-pane" id="tab1">
+  <!-- Reference data import bar -->
+  <div class="ref-bar">
+    <div class="ref-bar-label">📂 Reference Data</div>
+    <label class="import-file-btn" style="border-style:solid;border-color:var(--blue)">
+      📥 Load Location Data
+      <input type="file" accept=".xlsx,.xls" onchange="importRefData(event,'location')">
+    </label>
+    <label class="import-file-btn" style="border-style:solid;border-color:var(--blue)">
+      📥 Load Category Data
+      <input type="file" accept=".xlsx,.xls" onchange="importRefData(event,'category')">
+    </label>
+    <label class="import-file-btn" style="border-style:solid;border-color:var(--blue)">
+      📥 Load Department Data
+      <input type="file" accept=".xlsx,.xls" onchange="importRefData(event,'department')">
+    </label>
+    <button class="btn btn-tpl" onclick="downloadRefTemplate('location')">⬇ Location Template</button>
+    <button class="btn btn-tpl" onclick="downloadRefTemplate('category')">⬇ Category Template</button>
+    <button class="btn btn-tpl" onclick="downloadRefTemplate('department')">⬇ Department Template</button>
+    <span class="ref-status" id="ref-status">No reference data loaded</span>
+  </div>
+
+  <!-- Asset data import bar -->
+  <div class="import-bar">
+    <div class="import-bar-label">📥 Import Asset Data</div>
+    <label class="import-file-btn">📂 Choose File (Sheet 1)<input type="file" accept=".xlsx,.xls" onchange="importExcel(event,'tab1')"></label>
+    <button class="btn btn-tpl" onclick="downloadTemplate('tab1')">⬇ Asset Template</button>
+    <span class="import-hint">Mandatory fields validated per row.</span>
+  </div>
+  <div class="import-result" id="ir1"></div>
+
+  <div class="form-card">
+    <div class="card-title"><span class="card-title-bar"></span> Received Asset Entry</div>
+    <div class="edit-mode-banner" id="edit-banner1">✏️ Editing row — update fields and click Save Changes</div>
+    <div class="form-grid">
+
+      <div class="form-section-label">📍 Location</div>
+      <div class="field">
+        <label>City <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_city"><input class="ss-input" id="r_city" placeholder="— Select City —" readonly onclick="toggleSS('r_city')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_city"><div class="ss-search"><input placeholder="Search city…" oninput="filterSS('r_city',this.value)"></div><div class="ss-list" id="list-r_city"></div></div></div>
+      </div>
+      <div class="field">
+        <label>Site <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_site"><input class="ss-input" id="r_site" placeholder="— Select Site —" readonly onclick="toggleSS('r_site')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_site"><div class="ss-search"><input placeholder="Search site…" oninput="filterSS('r_site',this.value)"></div><div class="ss-list" id="list-r_site"></div></div></div>
+      </div>
+      <div class="field">
+        <label>Building <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_building"><input class="ss-input" id="r_building" placeholder="— Select Building —" readonly onclick="toggleSS('r_building')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_building"><div class="ss-search"><input placeholder="Search building…" oninput="filterSS('r_building',this.value)"></div><div class="ss-list" id="list-r_building"></div></div></div>
+      </div>
+      <div class="field">
+        <label>Floor <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_floor"><input class="ss-input" id="r_floor" placeholder="— Select Floor —" readonly onclick="toggleSS('r_floor')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_floor"><div class="ss-search"><input placeholder="Search floor…" oninput="filterSS('r_floor',this.value)"></div><div class="ss-list" id="list-r_floor"></div></div></div>
+      </div>
+      <div class="field">
+        <label>Room Tag ID <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_roomtagid"><input class="ss-input" id="r_roomtagid" placeholder="— Select Location Code —" readonly onclick="toggleSS('r_roomtagid')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_roomtagid"><div class="ss-search"><input placeholder="Search location code…" oninput="filterSS('r_roomtagid',this.value)"></div><div class="ss-list" id="list-r_roomtagid"></div></div></div>
+      </div>
+      <div class="field"><label>Location Desc</label><input id="r_locationdesc" placeholder="e.g. Server Room"></div>
+
+      <div class="form-section-label">🏷️ Classification</div>
+      <div class="field">
+        <label>Category <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_category"><input class="ss-input" id="r_category" placeholder="— Select Category —" readonly onclick="toggleSS('r_category')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_category"><div class="ss-search"><input placeholder="Search category…" oninput="filterSS('r_category',this.value)"></div><div class="ss-list" id="list-r_category"></div></div></div>
+      </div>
+      <div class="field">
+        <label>Sub-Category <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_subcategory"><input class="ss-input" id="r_subcategory" placeholder="— Select Sub-Category —" readonly onclick="toggleSS('r_subcategory')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_subcategory"><div class="ss-search"><input placeholder="Search sub-category…" oninput="filterSS('r_subcategory',this.value)"></div><div class="ss-list" id="list-r_subcategory"></div></div></div>
+      </div>
+      <div class="field">
+        <label>Product Desc <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_productdesc"><input class="ss-input" id="r_productdesc" placeholder="— Select Product —" readonly onclick="toggleSS('r_productdesc')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_productdesc"><div class="ss-search"><input placeholder="Search product…" oninput="filterSS('r_productdesc',this.value)"></div><div class="ss-list" id="list-r_productdesc"></div></div></div>
+      </div>
+      <div class="field">
+        <label>Department Description <span class="req">*</span></label>
+        <div class="ss-wrap" id="wrap-r_department"><input class="ss-input" id="r_department" placeholder="— Select Department —" readonly onclick="toggleSS('r_department')"><span class="ss-caret">▼</span><div class="ss-dropdown" id="dd-r_department"><div class="ss-search"><input placeholder="Search department…" oninput="filterSS('r_department',this.value)"></div><div class="ss-list" id="list-r_department"></div></div></div>
+      </div>
+      <div class="field">
+        <label>Department Code</label>
+        <input id="r_costcentre" placeholder="Auto-filled from department" readonly style="background:var(--surface2);color:var(--text2);cursor:not-allowed">
+      </div>
+
+      <div class="form-section-label">👤 Assignment</div>
+      <div class="field">
+        <label>Tag ID <span class="req">*</span></label>
+        <input id="r_tagid" placeholder="e.g. TAG-0001" oninput="checkTagConflict('r_tagid','tab1')">
+        <span class="conflict-inline" id="conflict-r_tagid"></span>
+      </div>
+      <div class="field"><label>Employee No.</label><input id="r_employeeno" placeholder="e.g. EMP-123"></div>
+      <div class="field"><label>Employee Name</label><input id="r_employeename" placeholder="Full name"></div>
+
+      <div class="form-section-label">🔧 Asset Details</div>
+      <div class="field"><label>Condition <span class="req">*</span></label>
+        <select id="r_condition"><option value="">— Select —</option><option>Excellent</option><option>Good</option><option>Bad</option></select>
+      </div>
+      <div class="field"><label>Status <span class="req">*</span></label>
+        <select id="r_status"><option value="">— Select —</option><option>In Use</option><option>Not In Use</option></select>
+      </div>
+      <div class="field"><label>Brand</label><input id="r_brand" placeholder="e.g. Dell"></div>
+      <div class="field"><label>Model</label><input id="r_model" placeholder="e.g. Latitude 5520"></div>
+      <div class="field"><label>Serial No.</label><input id="r_serialno" placeholder="Serial number"></div>
+      <div class="field"><label>External ID</label><input id="r_externalid" placeholder="External reference"></div>
+      <div class="field"><label>Plate Number</label><input id="r_platenumber" placeholder="Vehicle plate"></div>
+      <div class="field"><label>Chassis Number</label><input id="r_chassisnumber" placeholder="Chassis No."></div>
+      <div class="field"><label>Price</label><input id="r_price" type="number" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="field"><label>Date In Service</label><input id="r_dateinservice" type="date"></div>
+      <div class="field full"><label>Notes</label><textarea id="r_notes" placeholder="Additional notes..."></textarea></div>
+
+      <div class="form-section-label">📄 Procurement Details</div>
+      <div class="field"><label>GRN Number</label><input id="r_grnnumber" placeholder="Goods Receipt Note No."></div>
+      <div class="field"><label>GRN Date</label><input id="r_grndate" type="date"></div>
+      <div class="field"><label>PO Number</label><input id="r_ponumber" placeholder="Purchase Order No."></div>
+      <div class="field"><label>PO Date</label><input id="r_podate" type="date"></div>
+      <div class="field"><label>Invoice Number</label><input id="r_invoicenumber" placeholder="Invoice No."></div>
+      <div class="field"><label>Invoice Date</label><input id="r_invoicedate" type="date"></div>
+
+      <!-- KEEP PREVIOUS -->
+      <div class="keep-prev-row">
+        <input type="checkbox" id="keep_prev" checked>
+        <label for="keep_prev">Keep location, classification &amp; asset details for next entry</label>
+        <span>— uncheck to clear all fields after adding</span>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="addbtn1" onclick="addRow('tab1')">+ Add Asset</button>
+      <button class="btn btn-cancel" onclick="cancelEdit('tab1')" id="cancel-btn1" style="display:none">✕ Cancel</button>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <div class="table-header">
+      <h3>Asset Records</h3>
+      <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search..." oninput="filterTable('tab1',this.value)" id="search1"></div>
+      <button class="btn btn-export" onclick="exportCSV('tab1')">⬇ CSV</button>
+      <button class="btn btn-danger" onclick="clearAll('tab1')">🗑 Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table id="table1">
+        <thead><tr><th>#</th><th>City</th><th>Site</th><th>Building</th><th>Floor</th><th>Room Tag ID</th><th>Loc Desc</th><th>Category</th><th>Sub-Cat</th><th>Product Desc</th><th>Dept Desc</th><th>Dept Code</th><th>Tag ID</th><th>Emp No.</th><th>Emp Name</th><th>Condition</th><th>Status</th><th>Brand</th><th>Model</th><th>Serial No.</th><th>Ext ID</th><th>Plate No.</th><th>Chassis No.</th><th>Price</th><th>Date In Service</th><th>Notes</th><th>GRN No.</th><th>GRN Date</th><th>PO No.</th><th>PO Date</th><th>Invoice No.</th><th>Invoice Date</th><th>Actions</th></tr></thead>
+        <tbody id="tbody1"></tbody>
+      </table>
+    </div>
+    <div class="empty-state" id="empty1"><div class="icon">📭</div><p>No received assets yet.</p></div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 2: RETIRED ═══════════ -->
+<div class="tab-pane" id="tab2">
+  <div class="import-bar">
+    <div class="import-bar-label">📥 Import from Excel</div>
+    <label class="import-file-btn">📂 Choose File (Sheet 2)<input type="file" accept=".xlsx,.xls" onchange="importExcel(event,'tab2')"></label>
+    <button class="btn btn-tpl" onclick="downloadTemplate('tab2')">⬇ Template</button>
+    <span class="import-hint">Tag ID is mandatory.</span>
+  </div>
+  <div class="import-result" id="ir2"></div>
+  <div class="form-card">
+    <div class="card-title"><span class="card-title-bar"></span> Retired Asset Entry</div>
+    <div class="edit-mode-banner" id="edit-banner2">✏️ Editing row — update fields and click Save Changes</div>
+    <div class="form-grid">
+      <div class="field"><label>Tag ID <span class="req">*</span></label><input id="rt_tagid" placeholder="e.g. TAG-0001" oninput="checkTagConflict('rt_tagid','tab2')"><span class="conflict-inline" id="conflict-rt_tagid"></span></div>
+      <div class="field"><label>Employee No.</label><input id="rt_employeeno" placeholder="e.g. EMP-123"></div>
+      <div class="field"><label>Employee Name</label><input id="rt_employeename" placeholder="Full name"></div>
+      <div class="field"><label>Price</label><input id="rt_price" type="number" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="field"><label>Retirement Date</label><input id="rt_retirementdate" type="date"></div>
+      <div class="field full"><label>Notes</label><textarea id="rt_notes" placeholder="Reason for retirement..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="addbtn2" onclick="addRow('tab2')">+ Retire Asset</button>
+      <button class="btn btn-cancel" onclick="cancelEdit('tab2')" id="cancel-btn2" style="display:none">✕ Cancel</button>
+    </div>
+  </div>
+  <div class="table-section">
+    <div class="table-header">
+      <h3>Retired Asset Records</h3>
+      <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search..." oninput="filterTable('tab2',this.value)" id="search2"></div>
+      <button class="btn btn-export" onclick="exportCSV('tab2')">⬇ CSV</button>
+      <button class="btn btn-danger" onclick="clearAll('tab2')">🗑 Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table id="table2"><thead><tr><th>#</th><th>Tag ID</th><th>Emp No.</th><th>Emp Name</th><th>Price</th><th>Retirement Date</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="tbody2"></tbody></table>
+    </div>
+    <div class="empty-state" id="empty2"><div class="icon">🗃️</div><p>No retired assets yet.</p></div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 3: TRANSFER ═══════════ -->
+<div class="tab-pane" id="tab3">
+  <div class="import-bar">
+    <div class="import-bar-label">📥 Import from Excel</div>
+    <label class="import-file-btn">📂 Choose File (Sheet 3)<input type="file" accept=".xlsx,.xls" onchange="importExcel(event,'tab3')"></label>
+    <button class="btn btn-tpl" onclick="downloadTemplate('tab3')">⬇ Template</button>
+    <span class="import-hint">Tag ID is mandatory.</span>
+  </div>
+  <div class="import-result" id="ir3"></div>
+  <div class="form-card">
+    <div class="card-title"><span class="card-title-bar"></span> Transfer / Update Asset</div>
+    <div class="edit-mode-banner" id="edit-banner3">✏️ Editing row — update fields and click Save Changes</div>
+    <div class="form-grid">
+      <div class="form-section-label">🏷️ Asset Identification</div>
+      <div class="field"><label>Tag ID <span class="req">*</span></label><input id="tr_tagid" placeholder="Original Tag ID" oninput="checkTagConflict('tr_tagid','tab3')"><span class="conflict-inline" id="conflict-tr_tagid"></span></div>
+      <div class="form-section-label">📍 New Location &amp; Assignment</div>
+      <div class="field"><label>New Room Tag ID</label><input id="tr_roomtagid" placeholder="New room tag"></div>
+      <div class="field"><label>New Cost Centre</label><input id="tr_costcenter" placeholder="New cost centre"></div>
+      <div class="field"><label>New Employee</label><input id="tr_employee" placeholder="New employee"></div>
+      <div class="form-section-label">🔧 Updated Asset Info</div>
+      <div class="field"><label>New Brand</label><input id="tr_brand" placeholder="New brand"></div>
+      <div class="field"><label>New Model</label><input id="tr_model" placeholder="New model"></div>
+      <div class="field"><label>New Serial No.</label><input id="tr_serialno" placeholder="New serial number"></div>
+      <div class="field"><label>New Plate Number</label><input id="tr_platenumber" placeholder="New plate number"></div>
+      <div class="field"><label>New Chassis Number</label><input id="tr_chassisnumber" placeholder="New chassis number"></div>
+      <div class="form-section-label">📋 Updated Status</div>
+      <div class="field"><label>New Condition</label><select id="tr_condition"><option value="">— Select —</option><option>New</option><option>Good</option><option>Fair</option><option>Poor</option><option>Damaged</option></select></div>
+      <div class="field"><label>New Status</label><select id="tr_status"><option value="">— Select —</option><option>Active</option><option>Inactive</option><option>In Repair</option><option>Reserved</option><option>Transferred</option><option>In Use</option></select></div>
+      <div class="field full"><label>Notes</label><textarea id="tr_notes" placeholder="Transfer reason, approvals..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="addbtn3" onclick="addRow('tab3')">+ Submit Transfer</button>
+      <button class="btn btn-cancel" onclick="cancelEdit('tab3')" id="cancel-btn3" style="display:none">✕ Cancel</button>
+    </div>
+  </div>
+  <div class="table-section">
+    <div class="table-header">
+      <h3>Transfer / Update Records</h3>
+      <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search..." oninput="filterTable('tab3',this.value)" id="search3"></div>
+      <button class="btn btn-export" onclick="exportCSV('tab3')">⬇ CSV</button>
+      <button class="btn btn-danger" onclick="clearAll('tab3')">🗑 Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table id="table3"><thead><tr><th>#</th><th>Tag ID</th><th>New Room Tag ID</th><th>New Cost Centre</th><th>New Employee</th><th>New Brand</th><th>New Model</th><th>New Serial No.</th><th>New Plate No.</th><th>New Chassis No.</th><th>New Condition</th><th>New Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="tbody3"></tbody></table>
+    </div>
+    <div class="empty-state" id="empty3"><div class="icon">🔄</div><p>No transfers yet.</p></div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 4: AUDIT LOG ═══════════ -->
+<div class="tab-pane" id="tab4">
+  <div class="form-card">
+    <div class="card-title"><span class="card-title-bar"></span> Audit Log — All Changes</div>
+    <div class="al-filter" style="margin-bottom:10px">
+      <span style="font-size:11.5px;font-weight:600;color:var(--text2);align-self:center;margin-right:4px">Filter:</span>
+      <button class="al-chip active" onclick="filterAudit('all',this)">All</button>
+      <button class="al-chip" onclick="filterAudit('add',this)">Added</button>
+      <button class="al-chip" onclick="filterAudit('edit',this)">Edited</button>
+      <button class="al-chip" onclick="filterAudit('delete',this)">Deleted</button>
+      <button class="al-chip" onclick="filterAudit('import',this)">Imported</button>
+      <button class="al-chip" onclick="filterAudit('conflict',this)" style="background:var(--red-lt);color:var(--red);border-color:#fca5a5">⚠ Conflicts</button>
+      <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="clearAuditLog()">🗑 Clear Log</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div class="search-box" style="max-width:320px;flex:1"><span class="search-icon">🔍</span><input type="text" id="audit-search" placeholder="Search log by tag, action, tab, note..." oninput="renderAuditLog()" style="width:100%"></div>
+      <span id="audit-result-count" style="font-size:11.5px;color:var(--text3);white-space:nowrap"></span>
+    </div>
+    <div id="audit-table-wrap">
+      <div class="audit-empty" id="audit-empty">No activity recorded yet.</div>
+      <div class="table-wrap" id="audit-table-container" style="display:none">
+        <table id="audit-table">
+          <thead><tr><th>#</th><th>Time</th><th>Action</th><th>Tab</th><th>Tag ID</th><th>Detail</th></tr></thead>
+          <tbody id="audit-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modalTitle">Import Preview</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" id="modalImportBtn" onclick="confirmImport()" style="display:none">✅ Import Valid Rows</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  CLIENT + SUPABASE (client from URL path; DB from build env)
+// ══════════════════════════════════════════════════════════════
+function resolveClientId(){
+  const reserved=new Set(['api','_vercel','favicon.ico','robots.txt','assets']);
+  const seg=(window.location.pathname.split('/').filter(Boolean)[0]||'').trim();
+  if(!seg||reserved.has(seg.toLowerCase())) return 'default';
+  if(!/^[a-zA-Z0-9_-]{1,64}$/.test(seg)) return 'default';
+  return seg;
+}
+const CLIENT_ID=resolveClientId();
+const SB_URL='__SUPABASE_URL__';
+const SB_KEY='__SUPABASE_ANON_KEY__';
+const SB_TABLE='__SUPABASE_TABLE__';
+const USE_SUPABASE=Boolean(SB_URL&&SB_KEY&&SB_TABLE);
+
+// ══════════════════════════════════════════════════════════════
+//  SUPABASE HELPERS
+// ══════════════════════════════════════════════════════════════
+let _lastSyncTs = 0;
+function sbHeaders(extra){
+  // Supports both old anon key (eyJ...) and new publishable key (sb_publishable_...)
+  const isNewKey = SB_KEY.startsWith('sb_publishable_') || SB_KEY.startsWith('sb_secret_');
+  const h = {
+    'Content-Type': 'application/json',
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY,
+  };
+  if(isNewKey) h['sb-publishable-key'] = SB_KEY;
+  return Object.assign(h, extra||{});
+}
+async function sbGet(key){
+  const url=`${SB_URL}/rest/v1/${SB_TABLE}?key=eq.${encodeURIComponent(CLIENT_ID+'_'+key)}&select=value,updated_at`;
+  const r=await fetch(url,{headers:sbHeaders({'Accept':'application/json'})});
+  if(r.status===406||r.status===416) return null; // no rows — not an error
+  if(!r.ok){const txt=await r.text().catch(()=>'');throw new Error('SB GET '+r.status+' '+txt);}
+  const rows=await r.json(); return rows.length?rows[0]:null;
+}
+async function sbSet(key,value){
+  const body=JSON.stringify({key:CLIENT_ID+'_'+key,value,updated_at:new Date().toISOString()});
+  const r=await fetch(`${SB_URL}/rest/v1/${SB_TABLE}`,{
+    method:'POST',
+    headers:sbHeaders({'Prefer':'resolution=merge-duplicates','Accept':'application/json'}),
+    body
+  });
+  if(!r.ok){
+    const txt=await r.text().catch(()=>'');
+    throw new Error('SB SET '+r.status+' '+txt);
+  }
+}
+// Debug helper — run testSBWrite() in browser console to diagnose connection
+async function testSBWrite(){
+  console.log('Testing Supabase connection...');
+  console.log('URL:', SB_URL);
+  console.log('KEY:', SB_KEY.slice(0,30)+'...');
+  console.log('TABLE:', SB_TABLE);
+  console.log('CLIENT_ID:', CLIENT_ID);
+  console.log('Expected Supabase rows:');
+  console.log(' ',CLIENT_ID+'_received  — Received assets');
+  console.log(' ',CLIENT_ID+'_retired   — Retired assets');
+  console.log(' ',CLIENT_ID+'_transfers — Transfer/update assets');
+  try{
+    await sbSet('_test', 'ok_'+Date.now());
+    const row=await sbGet('_test');
+    console.log('✅ Write + Read OK:', row);
+    console.log('Current row counts — received:',state.tab1.length,'retired:',state.tab2.length,'transfers:',state.tab3.length);
+  }catch(e){
+    console.error('❌ Failed:', e.message);
+  }
+}
+
+function setSyncUI(status,msg){
+  const dot=document.getElementById('sync-dot'), txt=document.getElementById('sync-txt'), banner=document.getElementById('sync-banner');
+  banner.classList.add('show');
+  dot.className='sync-dot'+(status==='busy'?' busy':status==='err'?' err':'');
+  txt.textContent=msg;
+  if(status==='ok'){const d=new Date();document.getElementById('sync-last').textContent='Last sync: '+d.toLocaleTimeString();}
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════════
+const CONFIG={
+  tab1:{
+    storageKey:CLIENT_ID+'_recv_v3',
+    fieldMap:{r_city:'City',r_site:'Site',r_building:'Building',r_floor:'Floor',r_roomtagid:'RoomTagID',r_locationdesc:'LocationDesc',r_category:'Category',r_subcategory:'SubCategory',r_productdesc:'ProductDesc',r_department:'Department Description',r_costcentre:'Department Code',r_tagid:'TagID',r_employeeno:'EmployeeNo',r_employeename:'Employee Name',r_condition:'Condition',r_status:'Status',r_brand:'Brand',r_model:'Model',r_serialno:'SerialNo',r_externalid:'ExternalID',r_platenumber:'Plate Number',r_chassisnumber:'Chassis Number',r_price:'Price',r_dateinservice:'Date In Service',r_notes:'Notes',r_grnnumber:'GRN Number',r_grndate:'GRN Date',r_ponumber:'PO Number',r_podate:'PO Date',r_invoicenumber:'Invoice Number',r_invoicedate:'Invoice Date'},
+    required:['r_city','r_site','r_building','r_floor','r_roomtagid','r_category','r_subcategory','r_productdesc','r_department','r_tagid','r_condition','r_status'],
+    tagField:'r_tagid',conditionField:'r_condition',statusField:'r_status',
+    // Fields kept when "keep previous" is checked
+    keepFields:['r_city','r_site','r_building','r_floor','r_roomtagid','r_locationdesc','r_category','r_subcategory','r_productdesc','r_department','r_costcentre','r_condition','r_status','r_brand','r_model','r_dateinservice'],
+    ssFields:['r_city','r_site','r_building','r_floor','r_roomtagid','r_category','r_subcategory','r_productdesc','r_department'],
+    sheetIndex:0,templateName:'Received_Assets_Template.xlsx',label:'Received',tabColor:'green',
+    colHeaders:['#','City','Site','Building','Floor','Room Tag ID','Loc Desc','Category','Sub-Cat','Product Desc','Dept Desc','Dept Code','Tag ID','Emp No.','Emp Name','Condition','Status','Brand','Model','Serial No.','Ext ID','Plate No.','Chassis No.','Price','Date In Service','Notes','GRN No.','GRN Date','PO No.','PO Date','Invoice No.','Invoice Date','Actions']
+  },
+  tab2:{
+    storageKey:CLIENT_ID+'_ret_v3',
+    fieldMap:{rt_tagid:'TagID',rt_employeeno:'EmployeeNo',rt_employeename:'Employee Name',rt_price:'Price',rt_retirementdate:'Retirement Date',rt_notes:'Notes'},
+    required:['rt_tagid'],tagField:'rt_tagid',ssFields:[],
+    sheetIndex:1,templateName:'Retired_Assets_Template.xlsx',label:'Retired',tabColor:'red',
+    colHeaders:['#','Tag ID','Emp No.','Emp Name','Price','Retirement Date','Notes','Actions']
+  },
+  tab3:{
+    storageKey:CLIENT_ID+'_tr_v3',
+    fieldMap:{tr_tagid:'TagID',tr_roomtagid:'New RoomTagID',tr_costcenter:'New CostCenter',tr_employee:'New Employee',tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No',tr_platenumber:'New Plate Number',tr_chassisnumber:'New Chassis Number',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes'},
+    required:['tr_tagid'],tagField:'tr_tagid',conditionField:'tr_condition',statusField:'tr_status',ssFields:[],
+    sheetIndex:2,templateName:'Transfer_Assets_Template.xlsx',label:'Transfer',tabColor:'yellow',
+    colHeaders:['#','Tag ID','New Room Tag ID','New Cost Centre','New Employee','New Brand','New Model','New Serial No.','New Plate No.','New Chassis No.','New Condition','New Status','Notes','Actions']
+  }
+};
+const AUDIT_KEY=CLIENT_ID+'_audit_v3';
+const FIELDS=tab=>Object.keys(CONFIG[tab].fieldMap);
+const conditionPill={Excellent:'pill-green',Good:'pill-blue',Bad:'pill-red'};
+const statusPill={'In Use':'pill-green','Not In Use':'pill-gray'};
+
+// ══════════════════════════════════════════════════════════════
+//  REFERENCE DATA STORE
+//  locTree: { city: { site: { building: { floor: [locationCodes] } } } }
+//  catTree: { category: { subcat: [productDescs] } }
+// ══════════════════════════════════════════════════════════════
+let refData={locTree:{},catTree:{},deptMap:{},loaded:{loc:false,cat:false,dept:false}};
+
+function updateRefStatus(){
+  const el=document.getElementById('ref-status');
+  const parts=[];
+  if(refData.loaded.loc) parts.push('✅ Locations loaded');
+  if(refData.loaded.cat) parts.push('✅ Categories loaded');
+  if(refData.loaded.dept) parts.push('✅ Departments loaded');
+  if(!parts.length){el.textContent='No reference data loaded';el.className='ref-status';return;}
+  el.textContent=parts.join(' · ');el.className='ref-status loaded';
+  // Re-populate top-level dropdowns
+  populateSS('r_city',Object.keys(refData.locTree).sort());
+  populateSS('r_category',Object.keys(refData.catTree).sort());
+  populateSS('r_department',Object.keys(refData.deptMap).sort());
+}
+
+function importRefData(event,type){
+  const file=event.target.files[0]; if(!file) return;
+  try{event.target.value=null;}catch(e){}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){showNotif('Template appears empty.','error');return;}
+      // Validate hierarchy integrity BEFORE building the tree
+      const violations=(type==='location')?validateLocationRows(rows):type==='category'?validateCategoryRows(rows):validateDepartmentRows(rows);
+      if(violations.length){
+        showRefViolations(type,violations);
+        return; // Block import entirely — client must fix the file
+      }
+      if(type==='location') parseLocationRef(rows);
+      else if(type==='category') parseCategory(rows);
+      else parseDepartment(rows);
+      updateRefStatus();
+      const saveVal=type==='location'?refData.locTree:type==='category'?refData.catTree:refData.deptMap;
+      if(USE_SUPABASE) sbSet('refdata_'+type, JSON.stringify(saveVal)).catch(()=>{});
+      localStorage.setItem(CLIENT_ID+'_refdata_'+type, JSON.stringify(saveVal));
+      showNotif((type==='location'?'Location':'Category')+' reference data loaded — '+rows.length+' rows.','success');
+    }catch(err){showNotif('Failed to read file: '+err.message,'error');}
+  };
+  reader.readAsArrayBuffer(file);
+  setTimeout(()=>{try{event.target.value='';}catch(e){}},200);
+}
+
+// ── Hierarchy integrity validators ─────────────────────────────
+
+function validateLocationRows(rows){
+  // Build reverse maps: value → Set of parents seen
+  // Rule 1: same Site must always belong to same City
+  // Rule 2: same Building must always belong to same Site
+  // Rule 3: same Floor must always belong to same Building (within any site/city)
+  // Rule 4: same LocationCode (RoomTagID) must always belong to same Floor
+  const siteParent={};    // site → city
+  const bldgParent={};    // building → site
+  const floorParent={};   // "building|floor" is fine — floor numbers repeat across buildings
+                          // so we track building+floor → Set of location codes (no cross check needed)
+                          // but we DO check: same locationCode → same floor+building
+  const codeParent={};    // locationCode → "city|site|building|floor"
+  const violations=[];
+
+  rows.forEach((r,idx)=>{
+    const rowNum=idx+2;
+    const city=String(r['City']||r['city']||'').trim();
+    const site=String(r['Site']||r['site']||'').trim();
+    const bldg=String(r['Building']||r['building']||'').trim();
+    const floor=String(r['Floor']||r['floor']||'').trim();
+    const code=String(r['LocationCode']||r['Location Code']||r['RoomTagID']||r['Room Tag ID']||'').trim();
+
+    if(!city||!site) return;
+
+    // Site → City uniqueness
+    if(siteParent[site]===undefined){
+      siteParent[site]=city;
+    } else if(siteParent[site]!==city){
+      violations.push({rowNum,type:'Site conflict',
+        msg:`Site "${site}" is assigned to both "${siteParent[site]}" and "${city}". A site can only belong to one city.`});
+    }
+
+    if(!bldg) return;
+    const siteKey=city+'|'+site;
+
+    // Building → Site uniqueness (scoped to city+site combo)
+    const bldgKey=bldg;
+    if(bldgParent[bldgKey]===undefined){
+      bldgParent[bldgKey]=siteKey;
+    } else if(bldgParent[bldgKey]!==siteKey){
+      const prev=bldgParent[bldgKey].split('|');
+      violations.push({rowNum,type:'Building conflict',
+        msg:`Building "${bldg}" appears under both Site "${prev[1]}" (City: ${prev[0]}) and Site "${site}" (City: ${city}). A building can only belong to one site.`});
+    }
+
+    if(!floor||!code) return;
+    const parentPath=city+'|'+site+'|'+bldg+'|'+floor;
+
+    // LocationCode → Floor+Building+Site+City uniqueness
+    if(codeParent[code]===undefined){
+      codeParent[code]=parentPath;
+    } else if(codeParent[code]!==parentPath){
+      const prev=codeParent[code].split('|');
+      violations.push({rowNum,type:'Location Code conflict',
+        msg:`Room Tag ID "${code}" appears under Floor ${floor} / ${bldg} / ${site} / ${city} AND also under ${prev[3]} / ${prev[2]} / ${prev[1]} / ${prev[0]}. A location code must be unique across the entire hierarchy.`});
+    }
+  });
+  return violations;
+}
+
+function validateCategoryRows(rows){
+  // Rule 1: same SubCategory must always belong to same Category
+  // Rule 2: same ProductDesc must always belong to same SubCategory
+  const subParent={};   // subCategory → category
+  const prodParent={};  // productDesc → "category|subCategory"
+  const violations=[];
+
+  rows.forEach((r,idx)=>{
+    const rowNum=idx+2;
+    const cat=String(r['Category']||r['category']||'').trim();
+    const sub=String(r['SubCategory']||r['Sub-Category']||r['Sub Category']||'').trim();
+    const prod=String(r['ProductDesc']||r['Product Desc']||r['Product Description']||'').trim();
+
+    if(!cat||!sub) return;
+
+    // SubCategory → Category uniqueness
+    if(subParent[sub]===undefined){
+      subParent[sub]=cat;
+    } else if(subParent[sub]!==cat){
+      violations.push({rowNum,type:'Sub-Category conflict',
+        msg:`Sub-Category "${sub}" is assigned to both Category "${subParent[sub]}" and "${cat}". A sub-category can only belong to one category.`});
+    }
+
+    if(!prod) return;
+    const parentKey=cat+'|'+sub;
+
+    // ProductDesc → SubCategory uniqueness
+    if(prodParent[prod]===undefined){
+      prodParent[prod]=parentKey;
+    } else if(prodParent[prod]!==parentKey){
+      const prev=prodParent[prod].split('|');
+      violations.push({rowNum,type:'Product conflict',
+        msg:`Product "${prod}" appears under both Sub-Category "${prev[1]}" (Category: ${prev[0]}) and Sub-Category "${sub}" (Category: ${cat}). A product can only belong to one sub-category.`});
+    }
+  });
+  return violations;
+}
+
+// ── Show violations in import modal ────────────────────────────
+function showRefViolations(type,violations){
+  const label=type==='location'?'Location':'Category';
+  document.getElementById('modalTitle').textContent='⛔ '+label+' Data — Hierarchy Conflicts Found';
+  // Deduplicate violations (same message can appear from multiple rows)
+  const seen=new Set();
+  const unique=violations.filter(v=>{const k=v.type+'|'+v.msg;if(seen.has(k)) return false;seen.add(k);return true;});
+  let html=`<div style="background:var(--red-lt);border:1px solid #fca5a5;border-radius:7px;padding:11px 15px;color:var(--red);font-weight:600;font-size:13px;margin-bottom:14px">
+    ⛔ Import blocked — ${unique.length} hierarchy conflict${unique.length!==1?'s':''} found. Fix the file and re-import.
+  </div>`;
+  html+=`<div style="font-size:11.5px;color:var(--text2);margin-bottom:10px">Each item in your template must have exactly one parent. The conflicts below mean the same value appears under two different parents — which breaks the cascade dropdowns.</div>`;
+  html+=`<ul class="error-list" style="gap:7px">`;
+  unique.forEach(v=>{
+    html+=`<li style="flex-direction:column;gap:3px;align-items:flex-start">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="row-badge" style="background:#c0392b">${v.type}</span>
+        <span style="font-size:11px;color:var(--text3)">Row ${v.rowNum}</span>
+      </div>
+      <div style="font-size:12.5px;color:var(--red);margin-top:2px">${escHtml(v.msg)}</div>
+    </li>`;
+  });
+  html+=`</ul>`;
+  document.getElementById('modalBody').innerHTML=html;
+  document.getElementById('modalImportBtn').style.display='none';
+  document.getElementById('importModal').classList.add('show');
+}
+
+function parseLocationRef(rows){
+  const tree={};
+  rows.forEach(r=>{
+    const city=String(r['City']||r['city']||'').trim();
+    const site=String(r['Site']||r['site']||'').trim();
+    const bldg=String(r['Building']||r['building']||'').trim();
+    const floor=String(r['Floor']||r['floor']||'').trim();
+    const code=String(r['LocationCode']||r['Location Code']||r['RoomTagID']||r['Room Tag ID']||'').trim();
+    if(!city) return;
+    if(!tree[city]) tree[city]={};
+    if(site){
+      if(!tree[city][site]) tree[city][site]={};
+      if(bldg){
+        if(!tree[city][site][bldg]) tree[city][site][bldg]={};
+        if(floor){
+          if(!tree[city][site][bldg][floor]) tree[city][site][bldg][floor]=[];
+          if(code && !tree[city][site][bldg][floor].includes(code)) tree[city][site][bldg][floor].push(code);
+        }
+      }
+    }
+  });
+  refData.locTree=tree; refData.loaded.loc=true;
+}
+
+function parseCategory(rows){
+  const tree={};
+  rows.forEach(r=>{
+    const cat=String(r['Category']||r['category']||'').trim();
+    const sub=String(r['SubCategory']||r['Sub-Category']||r['Sub Category']||'').trim();
+    const prod=String(r['ProductDesc']||r['Product Desc']||r['Product Description']||'').trim();
+    if(!cat) return;
+    if(!tree[cat]) tree[cat]={};
+    if(sub){
+      if(!tree[cat][sub]) tree[cat][sub]=[];
+      if(prod && !tree[cat][sub].includes(prod)) tree[cat][sub].push(prod);
+    }
+  });
+  refData.catTree=tree; refData.loaded.cat=true;
+}
+
+function parseDepartment(rows){
+  const map={};
+  rows.forEach(r=>{
+    const code=String(r['Department Code']||r['DepartmentCode']||r['Code']||'').trim();
+    const desc=String(r['Department Description']||r['DepartmentDescription']||r['Description']||'').trim();
+    if(!desc) return;
+    map[desc]=code; // description → code
+  });
+  refData.deptMap=map; refData.loaded.dept=true;
+}
+
+function validateDepartmentRows(rows){
+  // Rule: same Description must always map to same Code, and same Code to same Description
+  const descToCode={};
+  const codeToDesc={};
+  const violations=[];
+  rows.forEach((r,idx)=>{
+    const rowNum=idx+2;
+    const code=String(r['Department Code']||r['DepartmentCode']||r['Code']||'').trim();
+    const desc=String(r['Department Description']||r['DepartmentDescription']||r['Description']||'').trim();
+    if(!desc||!code) return;
+    if(descToCode[desc]!==undefined && descToCode[desc]!==code){
+      violations.push({rowNum,type:'Dept Description conflict',
+        msg:'Department Description "'+desc+'" is mapped to both Code "'+descToCode[desc]+'" and "'+code+'". Each description must map to exactly one code.'});
+    } else { descToCode[desc]=code; }
+    if(codeToDesc[code]!==undefined && codeToDesc[code]!==desc){
+      violations.push({rowNum,type:'Dept Code conflict',
+        msg:'Department Code "'+code+'" is mapped to both Description "'+codeToDesc[code]+'" and "'+desc+'". Each code must map to exactly one description.'});
+    } else { codeToDesc[code]=desc; }
+  });
+  return violations;
+}
+
+function downloadRefTemplate(type){
+  const wb=XLSX.utils.book_new();
+  if(type==='location'){
+    const ws=XLSX.utils.aoa_to_sheet([['City','Site','Building','Floor','LocationCode'],['Dubai','HQ','Tower A','1','RM-101'],['Dubai','HQ','Tower A','2','RM-201']]);
+    ws['!cols']=[{wch:15},{wch:15},{wch:20},{wch:10},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,ws,'Location Data');
+  } else if(type==='category') {
+    const ws=XLSX.utils.aoa_to_sheet([['Category','SubCategory','ProductDesc'],['IT Equipment','Laptop','Dell Latitude 5520'],['IT Equipment','Desktop','HP EliteDesk 800']]);
+    ws['!cols']=[{wch:20},{wch:20},{wch:30}];
+    XLSX.utils.book_append_sheet(wb,ws,'Category Data');
+  } else {
+    const ws=XLSX.utils.aoa_to_sheet([['Department Code','Department Description'],['FIN-001','Finance'],['HR-001','Human Resources'],['IT-001','Information Technology']]);
+    ws['!cols']=[{wch:20},{wch:30}];
+    const noteWs=XLSX.utils.aoa_to_sheet([['Notes'],['Each Department Code must map to exactly one Description and vice versa.'],['Selecting Description auto-fills the Code in the form.']]);
+    noteWs['!cols']=[{wch:60}];
+    XLSX.utils.book_append_sheet(wb,ws,'Department Data');
+    XLSX.utils.book_append_sheet(wb,noteWs,'Instructions');
+  }
+  let fname='Location_Reference_Template.xlsx';
+  if(type==='category') fname='Category_Reference_Template.xlsx';
+  if(type==='department') fname='Department_Reference_Template.xlsx';
+  XLSX.writeFile(wb,fname);
+  showNotif('Template downloaded.');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SEARCHABLE SELECT ENGINE
+// ══════════════════════════════════════════════════════════════
+let _openSS=null;
+
+function populateSS(fieldId,options,placeholder){
+  const list=document.getElementById('list-'+fieldId); if(!list) return;
+  const current=document.getElementById(fieldId)?.value||'';
+  list.innerHTML='';
+  if(!options||!options.length){list.innerHTML='<div class="ss-empty">No options available</div>';return;}
+  options.forEach(opt=>{
+    const d=document.createElement('div');
+    d.className='ss-option'+(opt===current?' selected':'');
+    d.textContent=opt;
+    d.addEventListener('click',()=>selectSS(fieldId,opt));
+    list.appendChild(d);
+  });
+}
+
+function filterSS(fieldId,query){
+  const list=document.getElementById('list-'+fieldId); if(!list) return;
+  const q=query.toLowerCase();
+  list.querySelectorAll('.ss-option').forEach(d=>{
+    d.style.display=d.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+
+function toggleSS(fieldId){
+  const dd=document.getElementById('dd-'+fieldId); if(!dd) return;
+  if(_openSS && _openSS!==fieldId){
+    const prev=document.getElementById('dd-'+_openSS);
+    if(prev) prev.classList.remove('open');
+  }
+  const isOpen=dd.classList.contains('open');
+  dd.classList.toggle('open');
+  _openSS=isOpen?null:fieldId;
+  if(!isOpen){
+    const si=dd.querySelector('.ss-search input'); if(si){si.value='';si.focus();}
+    filterSS(fieldId,'');
+  }
+}
+
+function closeSS(){if(_openSS){const dd=document.getElementById('dd-'+_openSS);if(dd)dd.classList.remove('open');_openSS=null;}}
+
+function selectSS(fieldId,value){
+  const inp=document.getElementById(fieldId); if(!inp) return;
+  inp.value=value; inp.classList.remove('error');
+  closeSS();
+  // Cascade
+  if(fieldId==='r_city') onCityChange(value);
+  else if(fieldId==='r_site') onSiteChange(value);
+  else if(fieldId==='r_building') onBuildingChange(value);
+  else if(fieldId==='r_floor') onFloorChange(value);
+  else if(fieldId==='r_category') onCategoryChange(value);
+  else if(fieldId==='r_subcategory') onSubcategoryChange(value);
+  else if(fieldId==='r_department') onDepartmentChange(value);
+}
+
+function ssGetValue(fieldId){ return (document.getElementById(fieldId)||{}).value||''; }
+
+// Location cascade
+function onCityChange(city){
+  clearSS('r_site');clearSS('r_building');clearSS('r_floor');clearSS('r_roomtagid');
+  const sites=city&&refData.locTree[city]?Object.keys(refData.locTree[city]).sort():[];
+  populateSS('r_site',sites);
+}
+function onSiteChange(site){
+  const city=ssGetValue('r_city');
+  clearSS('r_building');clearSS('r_floor');clearSS('r_roomtagid');
+  const bldgs=city&&site&&refData.locTree[city]&&refData.locTree[city][site]?Object.keys(refData.locTree[city][site]).sort():[];
+  populateSS('r_building',bldgs);
+}
+function onBuildingChange(bldg){
+  const city=ssGetValue('r_city'),site=ssGetValue('r_site');
+  clearSS('r_floor');clearSS('r_roomtagid');
+  const floors=city&&site&&bldg&&refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]?Object.keys(refData.locTree[city][site][bldg]).sort((a,b)=>isNaN(a)?1:isNaN(b)?-1:+a-+b):[];
+  populateSS('r_floor',floors);
+}
+function onFloorChange(floor){
+  const city=ssGetValue('r_city'),site=ssGetValue('r_site'),bldg=ssGetValue('r_building');
+  clearSS('r_roomtagid');
+  const codes=city&&site&&bldg&&floor&&refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]&&refData.locTree[city][site][bldg][floor]?[...refData.locTree[city][site][bldg][floor]].sort():[];
+  populateSS('r_roomtagid',codes);
+}
+
+// Category cascade
+function onCategoryChange(cat){
+  clearSS('r_subcategory');clearSS('r_productdesc');
+  const subs=cat&&refData.catTree[cat]?Object.keys(refData.catTree[cat]).sort():[];
+  populateSS('r_subcategory',subs);
+}
+function onSubcategoryChange(sub){
+  const cat=ssGetValue('r_category');
+  clearSS('r_productdesc');
+  const prods=cat&&sub&&refData.catTree[cat]&&refData.catTree[cat][sub]?[...refData.catTree[cat][sub]].sort():[];
+  populateSS('r_productdesc',prods);
+}
+
+function onDepartmentChange(desc){
+  // Auto-fill Department Code (r_costcentre) based on selected description
+  const code=refData.deptMap[desc]||'';
+  const codeEl=document.getElementById('r_costcentre');
+  if(codeEl) codeEl.value=code;
+}
+
+function clearSS(fieldId){
+  const inp=document.getElementById(fieldId); if(inp) inp.value='';
+  populateSS(fieldId,[]);
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click',e=>{
+  if(_openSS && !e.target.closest('.ss-wrap')) closeSS();
+},true);
+
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+const state={tab1:[],tab2:[],tab3:[]};
+const editState={tab1:-1,tab2:-1,tab3:-1};
+let auditLog=[];
+let pendingImport={tab:null,rows:[]};
+let auditFilter='all';
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+async function init(){
+  // Show client label
+  const lbl=document.getElementById('client-label');
+  if(CLIENT_ID!=='default' && lbl) lbl.innerHTML='— <strong style="color:var(--yellow)">'+CLIENT_ID.toUpperCase()+'</strong> &nbsp;|&nbsp; Asset Registration &amp; Management System';
+  if(CLIENT_ID!=='default') document.title=CLIENT_ID.toUpperCase()+' — Asset Tracking';
+  if(CLIENT_ID==='default'){
+    const w=document.getElementById('config-warning');
+    const ex=document.getElementById('config-warning-example');
+    if(ex) ex.textContent=window.location.origin+'/EIAC';
+    if(w) w.style.display='flex';
+  }
+
+  // Load reference data from localStorage first (fast)
+  try{const ld=localStorage.getItem(CLIENT_ID+'_refdata_location');if(ld){refData.locTree=JSON.parse(ld);refData.loaded.loc=true;}}catch(e){}
+  try{const cd=localStorage.getItem(CLIENT_ID+'_refdata_category');if(cd){refData.catTree=JSON.parse(cd);refData.loaded.cat=true;}}catch(e){}
+  try{const dd=localStorage.getItem(CLIENT_ID+'_refdata_department');if(dd){refData.deptMap=JSON.parse(dd);refData.loaded.dept=true;}}catch(e){}
+  updateRefStatus();
+
+  if(USE_SUPABASE){
+    setSyncUI('busy','Checking access…');
+    try{
+      // Check active flag
+      const flagRow=await sbGet('active');
+      const isActive = !flagRow || flagRow.value==='true' || flagRow.value===true;
+      if(!isActive){
+        document.getElementById('lock-screen').classList.add('show');
+        document.getElementById('lock-client-name').textContent=CLIENT_ID.toUpperCase();
+        setSyncUI('err','Tool deactivated');
+        return;
+      }
+      // Load each tab from its own Supabase row
+      const [recvRow,retRow,trRow]=await Promise.all([
+        sbGet('received'),sbGet('retired'),sbGet('transfers')
+      ]);
+      if(recvRow && recvRow.value){const d=JSON.parse(recvRow.value);state.tab1=d.rows||[];}
+      if(retRow  && retRow.value) {const d=JSON.parse(retRow.value); state.tab2=d.rows||[];}
+      if(trRow   && trRow.value)  {const d=JSON.parse(trRow.value);  state.tab3=d.rows||[];}
+      // Use the most recent updated_at across the three rows for sync timestamp
+      const tsList=[recvRow,retRow,trRow].filter(Boolean).map(r=>new Date(r.updated_at).getTime());
+      if(tsList.length) _lastSyncTs=Math.max(...tsList);
+      // Load audit log
+      const auditRow=await sbGet('audit');
+      if(auditRow && auditRow.value) auditLog=JSON.parse(auditRow.value)||[];
+      // Load ref data from Supabase if newer
+      const locRow=await sbGet('refdata_location');
+      if(locRow && locRow.value){refData.locTree=JSON.parse(locRow.value);refData.loaded.loc=true;}
+      const catRow=await sbGet('refdata_category');
+      if(catRow && catRow.value){refData.catTree=JSON.parse(catRow.value);refData.loaded.cat=true;}
+      const deptRow=await sbGet('refdata_department');
+      if(deptRow && deptRow.value){refData.deptMap=JSON.parse(deptRow.value);refData.loaded.dept=true;}
+      // Re-populate dropdowns now that Supabase refdata is loaded (may be newer than localStorage)
+      updateRefStatus();
+      setSyncUI('ok','Synced');
+    }catch(err){
+      setSyncUI('err','Offline — using local data');
+      loadFromLocal();
+      updateRefStatus(); // ensure dropdowns populate from localStorage when offline
+    }
+  } else {
+    loadFromLocal();
+  }
+
+  updateRefStatus();
+  ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
+  renderAuditLog(); refreshDashboard();
+
+  // Poll Supabase every 25 seconds for teammate changes
+  if(USE_SUPABASE){
+    setInterval(async()=>{
+      try{
+        const [recvRow,retRow,trRow]=await Promise.all([
+          sbGet('received'),sbGet('retired'),sbGet('transfers')
+        ]);
+        const rows=[recvRow,retRow,trRow];
+        const maxRemoteTs=Math.max(...rows.filter(Boolean).map(r=>new Date(r.updated_at).getTime()));
+        if(maxRemoteTs>_lastSyncTs+1500){
+          _lastSyncTs=maxRemoteTs;
+          if(recvRow && recvRow.value){const d=JSON.parse(recvRow.value);state.tab1=d.rows||[];}
+          if(retRow  && retRow.value) {const d=JSON.parse(retRow.value); state.tab2=d.rows||[];}
+          if(trRow   && trRow.value)  {const d=JSON.parse(trRow.value);  state.tab3=d.rows||[];}
+          ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
+          refreshDashboard();
+          showNotif('🔄 Data updated by teammate','info');
+          setSyncUI('ok','Synced');
+        }
+      }catch(e){setSyncUI('err','Sync error');}
+    },25000);
+  }
+}
+
+function loadFromLocal(){
+  // Each tab has its own localStorage key
+  ['tab1','tab2','tab3'].forEach(tab=>{
+    try{state[tab]=JSON.parse(localStorage.getItem(CONFIG[tab].storageKey))||[];}catch(e){state[tab]=[];}
+  });
+  try{auditLog=JSON.parse(localStorage.getItem(AUDIT_KEY))||[];}catch(e){auditLog=[];}
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SAVE
+// ══════════════════════════════════════════════════════════════
+// One debounce timer per tab so each saves independently
+const _saveTimers={tab1:null,tab2:null,tab3:null};
+// Map tab → Supabase row key suffix
+const SB_ROW={tab1:'received',tab2:'retired',tab3:'transfers'};
+
+function save(tab){
+  // 1. Save this tab to its own localStorage key (instant)
+  localStorage.setItem(CONFIG[tab].storageKey,JSON.stringify(state[tab]));
+  // 2. Supabase — each tab gets its own row: _received / _retired / _transfers
+  if(USE_SUPABASE){
+    clearTimeout(_saveTimers[tab]);
+    _saveTimers[tab]=setTimeout(async()=>{
+      setSyncUI('busy','Saving…');
+      try{
+        await sbSet(SB_ROW[tab],JSON.stringify({rows:state[tab],ts:Date.now()}));
+        setSyncUI('ok','Saved');
+      }catch(err){setSyncUI('err','Save failed: '+err.message);console.error('Supabase save error:',err);}
+    },800);
+  }
+}
+
+let _auditSaveTimer=null;
+function saveAudit(){
+  localStorage.setItem(AUDIT_KEY,JSON.stringify(auditLog));
+  if(USE_SUPABASE){
+    clearTimeout(_auditSaveTimer);
+    _auditSaveTimer=setTimeout(()=>{sbSet('audit',JSON.stringify(auditLog)).catch(()=>{});},2000);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TAB SWITCH
+// ══════════════════════════════════════════════════════════════
+function switchTab(tabId,btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+  if(tabId==='tab0') refreshDashboard();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════
+let _notifTimer;
+function showNotif(msg,type='success'){
+  const el=document.getElementById('notif');
+  el.innerHTML={success:'✅',error:'❌',info:'ℹ️',warning:'⚠️'}[type]+' '+msg;
+  el.className='notif '+type+' show';
+  clearTimeout(_notifTimer);
+  _notifTimer=setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CONFLICT DETECTION
+// ══════════════════════════════════════════════════════════════
+function getTagMap(){
+  const map={};
+  ['tab1','tab2','tab3'].forEach(tab=>{
+    const tf=CONFIG[tab].tagField;
+    state[tab].forEach((r,i)=>{const tag=(r[tf]||'').trim().toUpperCase();if(!tag) return;if(!map[tag]) map[tag]=[];map[tag].push({tab,label:CONFIG[tab].label,idx:i});});
+  });
+  return map;
+}
+function getConflicts(){
+  return Object.entries(getTagMap()).filter(([,arr])=>new Set(arr.map(x=>x.tab)).size>1).map(([tag,entries])=>({tag,entries}));
+}
+function checkTagConflict(inputId,currentTab){
+  const el=document.getElementById(inputId),hint=document.getElementById('conflict-'+inputId);
+  if(!el||!hint) return;
+  const val=(el.value||'').trim().toUpperCase();
+  if(!val){el.classList.remove('conflict-warn');hint.classList.remove('show');return;}
+  const found=['tab1','tab2','tab3'].filter(t=>t!==currentTab).filter(t=>state[t].some(r=>(r[CONFIG[t].tagField]||'').trim().toUpperCase()===val)).map(t=>CONFIG[t].label);
+  if(found.length){el.classList.add('conflict-warn');hint.textContent='⚠ Already in: '+found.join(', ');hint.classList.add('show');}
+  else{el.classList.remove('conflict-warn');hint.classList.remove('show');}
+}
+
+// ══════════════════════════════════════════════════════════════
+//  AUDIT LOG
+// ══════════════════════════════════════════════════════════════
+function logAction(action,tab,detail,tagId=''){
+  auditLog.unshift({id:Date.now()+'_'+Math.random().toString(36).slice(2,5),ts:new Date().toISOString(),action,tab,tabLabel:CONFIG[tab]?.label||tab,detail,tagId});
+  if(auditLog.length>500) auditLog=auditLog.slice(0,500);
+  saveAudit(); updateAuditCount(); renderAuditLog();
+}
+function updateAuditCount(){document.getElementById('count4').textContent=auditLog.length;}
+function filterAudit(type,btn){auditFilter=type;document.querySelectorAll('.al-chip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');renderAuditLog();}
+function clearAuditLog(){if(!confirm('Clear entire audit log?')) return;auditLog=[];saveAudit();updateAuditCount();renderAuditLog();showNotif('Audit log cleared.','info');}
+function renderAuditLog(){
+  const tbody=document.getElementById('audit-tbody'),empty=document.getElementById('audit-empty'),wrap=document.getElementById('audit-table-container');
+  const searchEl=document.getElementById('audit-search'),q=(searchEl?searchEl.value:'').toLowerCase().trim();
+  let filtered=auditFilter==='all'?[...auditLog]:auditLog.filter(e=>e.action===auditFilter);
+  if(q) filtered=filtered.filter(e=>(e.tabLabel||'').toLowerCase().includes(q)||(e.detail||'').toLowerCase().includes(q)||(e.tagId||'').toLowerCase().includes(q)||(e.action||'').toLowerCase().includes(q));
+  const countEl=document.getElementById('audit-result-count');
+  if(countEl) countEl.textContent=filtered.length===auditLog.length?auditLog.length+' entries':filtered.length+' of '+auditLog.length;
+  if(!filtered.length){empty.style.display='block';wrap.style.display='none';return;}
+  empty.style.display='none';wrap.style.display='';
+  const cls={add:'act-add',edit:'act-edit',delete:'act-delete',import:'act-import',conflict:'act-delete'};
+  const lbl={add:'ADDED',edit:'EDITED',delete:'DELETED',import:'IMPORTED',conflict:'CONFLICT'};
+  const tc={tab1:'var(--green)',tab2:'var(--red)',tab3:'var(--yellow-dk)'};
+  tbody.innerHTML=filtered.map((e,i)=>{
+    const dt=new Date(e.ts),ts=dt.toLocaleDateString()+' '+dt.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+    return`<tr><td style="color:var(--text3);font-family:'JetBrains Mono',monospace">${filtered.length-i}</td><td style="font-size:11.5px;font-family:'JetBrains Mono',monospace;color:var(--text2)">${escHtml(ts)}</td><td><span class="activity-action ${cls[e.action]||'act-add'}" style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:700">${lbl[e.action]||e.action}</span></td><td><span style="font-size:11.5px;font-weight:600;color:${tc[e.tab]||'var(--blue)'}">${escHtml(e.tabLabel)}</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:12px">${escHtml(e.tagId||'—')}</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--text2)" title="${escHtml(e.detail)}">${escHtml(e.detail)}</td></tr>`;
+  }).join('');
+  updateAuditCount();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════════════════════
+function refreshDashboard(){
+  const r=state.tab1.length,ret=state.tab2.length,tr=state.tab3.length,total=r+ret+tr;
+  const conflicts=getConflicts(),nc=conflicts.length;
+  ['recv','ret','tr','conf'].forEach((k,i)=>{const v=[r,ret,tr,nc][i];document.getElementById('kpi-'+k).textContent=v;document.getElementById('dsb-'+['recv','ret','tr','conf'][i]).textContent=v;document.getElementById('hs-'+k).textContent=v;});
+  document.getElementById('dsb-total').textContent=total;
+  if(CLIENT_ID!=='default') document.getElementById('dsb-client').textContent=CLIENT_ID.toUpperCase()+' — Asset Count';
+  const last=auditLog[0];
+  if(last){const dt=new Date(last.ts);document.getElementById('dsb-time').textContent='Last: '+dt.toLocaleDateString()+' '+dt.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});}
+  const cc=document.getElementById('conflict-chip');
+  if(nc>0) cc.classList.add('has-conflicts'); else cc.classList.remove('has-conflicts');
+  // Conflicts panel
+  const el=document.getElementById('conflict-list');
+  if(!conflicts.length){el.innerHTML='<div class="no-conflicts"><div class="icon">✅</div><p>No conflicts detected</p></div>';}
+  else el.innerHTML=conflicts.map(c=>`<div class="conflict-item"><span class="conflict-tag">${escHtml(c.tag)}</span><div class="conflict-desc">Found in ${c.entries.map(e=>'<strong>'+e.label+'</strong>').join(' &amp; ')}</div></div>`).join('');
+  // Recent activity
+  const af=document.getElementById('recent-activity');
+  const recent=auditLog.slice(0,8);
+  if(!recent.length){af.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px">No activity yet.</div>';return;}
+  const dotC={add:'dot-green',edit:'dot-blue',delete:'dot-red',import:'dot-yellow',conflict:'dot-red'};
+  const actCls={add:'act-add',edit:'act-edit',delete:'act-delete',import:'act-import',conflict:'act-delete'};
+  const actLbl={add:'ADDED',edit:'EDITED',delete:'DELETED',import:'IMPORTED',conflict:'CONFLICT'};
+  af.innerHTML=recent.map(e=>{const dt=new Date(e.ts),time=dt.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})+' '+dt.toLocaleDateString();return`<div class="activity-item"><span class="activity-dot ${dotC[e.action]||'dot-blue'}"></span><div class="activity-body"><div class="activity-text"><strong>${escHtml(e.tabLabel)}</strong> — ${escHtml(e.detail)}</div><div class="activity-time">${time}</div></div><span class="activity-action ${actCls[e.action]||'act-add'}">${actLbl[e.action]||'ACTION'}</span></div>`;}).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FORM HELPERS
+// ══════════════════════════════════════════════════════════════
+function validate(tab){
+  const conf=CONFIG[tab]; let valid=true;
+  const ssFieldSet=new Set(conf.ssFields||[]);
+  FIELDS(tab).forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    // Clear previous error state
+    el.classList.remove('error');
+    // For SS fields the visible input IS the element (id=fieldId on .ss-input), same el
+    if(conf.required.includes(id)&&!el.value.trim()){
+      el.classList.add('error');
+      valid=false;
+    }
+  });
+  if(!valid) showNotif('Please fill all required fields (highlighted in red).','error');
+  return valid;
+}
+function collectForm(tab){
+  const row={};
+  FIELDS(tab).forEach(id=>{const el=document.getElementById(id);row[id]=el?el.value.trim():'';});
+  return row;
+}
+function clearForm(tab,keepPrevious=false){
+  const conf=CONFIG[tab];
+  const keepSet=new Set(keepPrevious?(conf.keepFields||[]):[]);
+  FIELDS(tab).forEach(id=>{
+    if(keepPrevious && keepSet.has(id)) return; // keep this value
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.value=''; el.classList.remove('error');
+  });
+  // Reset conflict hints
+  if(conf.tagField){const hint=document.getElementById('conflict-'+conf.tagField);const inp=document.getElementById(conf.tagField);if(hint) hint.classList.remove('show');if(inp) inp.classList.remove('conflict-warn');}
+}
+function resetPrimaryBtn(tab){const labels={tab1:'+ Add Asset',tab2:'+ Retire Asset',tab3:'+ Submit Transfer'};document.getElementById('addbtn'+tab.slice(-1)).textContent=labels[tab];}
+
+// ══════════════════════════════════════════════════════════════
+//  CRUD
+// ══════════════════════════════════════════════════════════════
+function addRow(tab){
+  if(!validate(tab)) return;
+  const row=collectForm(tab),n=tab.slice(-1),conf=CONFIG[tab],tagId=row[conf.tagField]||'';
+  if(editState[tab]>=0){
+    state[tab][editState[tab]]=row; logAction('edit',tab,'Tag: '+tagId+' updated',tagId);
+    editState[tab]=-1;
+    document.getElementById('edit-banner'+n).classList.remove('show');
+    document.getElementById('cancel-btn'+n).style.display='none';
+    resetPrimaryBtn(tab); showNotif('Row updated.');
+    clearForm(tab,false); // always clear on save-edit
+  } else {
+    state[tab].push(row); logAction('add',tab,conf.label+': Tag '+(tagId||'(no tag)')+' added',tagId);
+    showNotif('Asset added.');
+    // Keep previous if checkbox checked (tab1 only)
+    const keepCb=document.getElementById('keep_prev');
+    const keepPrev=tab==='tab1' && keepCb && keepCb.checked;
+    clearForm(tab,keepPrev);
+    // After clearing, re-populate cascading dropdowns to match kept values
+    if(keepPrev){
+      const city=document.getElementById('r_city')?.value||'';
+      const site=document.getElementById('r_site')?.value||'';
+      const bldg=document.getElementById('r_building')?.value||'';
+      const floor=document.getElementById('r_floor')?.value||'';
+      const cat=document.getElementById('r_category')?.value||'';
+      const sub=document.getElementById('r_subcategory')?.value||'';
+      if(city) populateSS('r_site',city&&refData.locTree[city]?Object.keys(refData.locTree[city]).sort():[]);
+      if(site) populateSS('r_building',city&&site&&refData.locTree[city]&&refData.locTree[city][site]?Object.keys(refData.locTree[city][site]).sort():[]);
+      if(bldg) populateSS('r_floor',city&&site&&bldg&&refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]?Object.keys(refData.locTree[city][site][bldg]).sort((a,b)=>isNaN(a)?1:isNaN(b)?-1:+a-+b):[]);
+      if(floor){const codes=city&&site&&bldg&&floor&&refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]&&refData.locTree[city][site][bldg][floor]?[...refData.locTree[city][site][bldg][floor]].sort():[];populateSS('r_roomtagid',codes);}
+      if(cat) populateSS('r_subcategory',cat&&refData.catTree[cat]?Object.keys(refData.catTree[cat]).sort():[]);
+      if(sub) populateSS('r_productdesc',cat&&sub&&refData.catTree[cat]&&refData.catTree[cat][sub]?[...refData.catTree[cat][sub]].sort():[]);
+    }
+  }
+  save(tab); renderTable(tab); updateCount(tab);
+  const c=getConflicts().filter(x=>x.tag===tagId.toUpperCase());
+  if(c.length) logAction('conflict',tab,'Tag '+tagId+' in multiple tabs',tagId);
+  refreshDashboard();
+}
+
+function editRow(tab,idx){
+  const row=state[tab][idx],n=tab.slice(-1);
+  FIELDS(tab).forEach(id=>{const el=document.getElementById(id);if(el) el.value=row[id]||'';});
+  // For SS fields, repopulate cascade based on loaded values
+  if(tab==='tab1'){
+    const city=row.r_city||'',site=row.r_site||'',bldg=row.r_building||'',floor=row.r_floor||'',cat=row.r_category||'',sub=row.r_subcategory||'';
+    if(city){populateSS('r_site',refData.locTree[city]?Object.keys(refData.locTree[city]).sort():[]);}
+    if(city&&site){populateSS('r_building',refData.locTree[city]&&refData.locTree[city][site]?Object.keys(refData.locTree[city][site]).sort():[]);}
+    if(city&&site&&bldg){populateSS('r_floor',refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]?Object.keys(refData.locTree[city][site][bldg]).sort((a,b)=>isNaN(a)?1:isNaN(b)?-1:+a-+b):[]);}
+    if(city&&site&&bldg&&floor){const codes=refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]&&refData.locTree[city][site][bldg][floor]?[...refData.locTree[city][site][bldg][floor]].sort():[];populateSS('r_roomtagid',codes);}
+    if(cat){populateSS('r_subcategory',refData.catTree[cat]?Object.keys(refData.catTree[cat]).sort():[]);}
+    if(cat&&sub){populateSS('r_productdesc',refData.catTree[cat]&&refData.catTree[cat][sub]?[...refData.catTree[cat][sub]].sort():[]);}
+  }
+  editState[tab]=idx;
+  document.getElementById('edit-banner'+n).classList.add('show');
+  document.getElementById('cancel-btn'+n).style.display='inline-flex';
+  document.getElementById('addbtn'+n).textContent='💾 Save Changes';
+  document.querySelector('#'+tab+' .form-card').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function cancelEdit(tab){
+  editState[tab]=-1; clearForm(tab,false); const n=tab.slice(-1);
+  document.getElementById('edit-banner'+n).classList.remove('show');
+  document.getElementById('cancel-btn'+n).style.display='none';
+  resetPrimaryBtn(tab);
+}
+
+function deleteRow(tab,idx){
+  if(!confirm('Delete this row? This cannot be undone.')) return;
+  if(editState[tab]===idx) cancelEdit(tab);
+  const tagId=state[tab][idx][CONFIG[tab].tagField]||'';
+  logAction('delete',tab,CONFIG[tab].label+': Tag '+(tagId||'(no tag)')+' deleted',tagId);
+  state[tab].splice(idx,1);
+  save(tab); renderTable(tab); updateCount(tab); showNotif('Row deleted.','info'); refreshDashboard();
+}
+
+function clearAll(tab){
+  if(!confirm('Clear ALL records for this tab? This cannot be undone.')) return;
+  logAction('delete',tab,'All '+CONFIG[tab].label+' records cleared ('+state[tab].length+' rows)','-');
+  state[tab]=[]; editState[tab]=-1; cancelEdit(tab);
+  save(tab); renderTable(tab); updateCount(tab); showNotif('All records cleared.','info'); refreshDashboard();
+}
+
+function updateCount(tab){document.getElementById('count'+tab.slice(-1)).textContent=state[tab].length;}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER TABLE
+// ══════════════════════════════════════════════════════════════
+function renderTable(tab,filter=''){
+  const conf=CONFIG[tab],n=tab.slice(-1);
+  const tbody=document.getElementById('tbody'+n),empty=document.getElementById('empty'+n);
+  const q=(filter||document.getElementById('search'+n)?.value||'').toLowerCase();
+  const flds=FIELDS(tab),tagMap=getTagMap();
+  const filtered=state[tab].map((r,i)=>({r,i})).filter(({r})=>flds.some(id=>(r[id]||'').toLowerCase().includes(q)));
+  tbody.innerHTML='';
+  const tbl=tbody.closest('table');
+  if(!filtered.length){empty.style.display='block';tbl.style.display='none';return;}
+  empty.style.display='none';tbl.style.display='';
+  filtered.forEach(({r,i},displayIdx)=>{
+    const tagId=(r[conf.tagField]||'').toUpperCase();
+    const hasConflict=tagId&&tagMap[tagId]&&new Set(tagMap[tagId].map(x=>x.tab)).size>1;
+    const tr=document.createElement('tr');
+    if(hasConflict) tr.classList.add('conflict-row');
+    let cells=`<td>${displayIdx+1}</td>`;
+    flds.forEach(id=>{
+      const v=r[id]||'';
+      if(id===conf.conditionField&&v) cells+=`<td><span class="pill ${conditionPill[v]||'pill-gray'}">${escHtml(v)}</span></td>`;
+      else if(id===conf.statusField&&v) cells+=`<td><span class="pill ${statusPill[v]||'pill-gray'}">${escHtml(v)}</span></td>`;
+      else if(id===conf.tagField&&hasConflict) cells+=`<td title="${escHtml(v)}">${escHtml(v)}<span class="conflict-badge">⚠ Conflict</span></td>`;
+      else cells+=`<td title="${escHtml(v)}">${escHtml(v)}</td>`;
+    });
+    cells+=`<td><div class="actions-col"><button class="btn btn-sm btn-edit" data-tab="${tab}" data-idx="${i}">✏️ Edit</button><button class="btn btn-sm btn-del" data-tab="${tab}" data-idx="${i}">🗑 Del</button></div></td>`;
+    tr.innerHTML=cells;
+    tr.querySelectorAll('.btn-edit,.btn-del').forEach((btn,bi)=>{
+      btn.addEventListener('click',()=>bi===0?editRow(tab,i):deleteRow(tab,i));
+    });
+    tbody.appendChild(tr);
+  });
+}
+function filterTable(tab,val){renderTable(tab,val);}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ══════════════════════════════════════════════════════════════
+//  EXPORT CSV
+// ══════════════════════════════════════════════════════════════
+function exportCSV(tab){
+  const conf=CONFIG[tab],headers=conf.colHeaders.filter(h=>h!=='Actions'&&h!=='#');
+  if(!state[tab].length){showNotif('No data to export.','info');return;}
+  const flds=FIELDS(tab);
+  const lines=[headers.join(',')];
+  state[tab].forEach(r=>lines.push(flds.map(id=>`"${(r[id]||'').replace(/"/g,'""')}"`).join(',')));
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=conf.label.toLowerCase()+'_assets_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); showNotif('CSV exported.');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DOWNLOAD ASSET TEMPLATE
+// ══════════════════════════════════════════════════════════════
+function downloadTemplate(tab){
+  const conf=CONFIG[tab],headers=Object.values(conf.fieldMap);
+  const wb=XLSX.utils.book_new();
+  const wsData=[headers,Array(headers.length).fill(''),Array(headers.length).fill('')];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=headers.map(h=>({wch:Math.max(h.length+4,14)}));
+  const req=conf.required.map(id=>conf.fieldMap[id]);
+  const noteSheet=XLSX.utils.aoa_to_sheet([['Field','Mandatory?'],...headers.map(h=>[h,req.includes(h)?'✔ Required':'Optional'])]);
+  noteSheet['!cols']=[{wch:30},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,ws,'Data');
+  XLSX.utils.book_append_sheet(wb,noteSheet,'Field Reference');
+  XLSX.writeFile(wb,conf.templateName);
+  showNotif('Template downloaded.');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  IMPORT EXCEL (asset data)
+// ══════════════════════════════════════════════════════════════
+function importExcel(event,tab){
+  const prevIr=document.getElementById('ir'+tab.slice(-1));if(prevIr) prevIr.classList.remove('show');
+  const file=event.target.files[0];if(!file) return;
+  try{event.target.value=null;}catch(e){}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const conf=CONFIG[tab];
+      const util=['field reference','instructions','readme','notes'];
+      let sn=wb.SheetNames[conf.sheetIndex];
+      if(!sn||util.includes(sn.toLowerCase())) sn=wb.SheetNames.find(s=>!util.includes(s.toLowerCase()))||wb.SheetNames[0];
+      const ws=wb.Sheets[sn];if(!ws){showNotif('Could not read sheet.','error');return;}
+      const rawRows=XLSX.utils.sheet_to_json(ws,{defval:''});if(!rawRows.length){showNotif('Sheet is empty.','info');return;}
+      const hl={};Object.keys(rawRows[0]).forEach(h=>{hl[h.trim().toLowerCase()]=h;});
+      const fieldMap=conf.fieldMap,colKey={},missingCols=[];
+      Object.entries(fieldMap).forEach(([fid,eh])=>{const n=eh.trim().toLowerCase();if(hl[n]!==undefined) colKey[fid]=hl[n];else missingCols.push(eh);});
+      const irEl=document.getElementById('ir'+tab.slice(-1));if(irEl) irEl.classList.remove('show');
+      const mr=conf.required.filter(fid=>!colKey[fid]);
+      if(mr.length){const names=mr.map(fid=>fieldMap[fid]).join(', ');showNotif('Missing required columns: '+names,'error');showImportResult(tab,'Missing required columns: '+names,'err');return;}
+      const validRows=[],rowErrors=[],rowWarnings=[];
+      rawRows.forEach((raw,idx)=>{
+        const rowNum=idx+2,row={};
+        FIELDS(tab).forEach(fid=>{
+          const key=colKey[fid];let val=key!==undefined?String(raw[key]??'').trim():'';
+          if(fid==='r_dateinservice'&&val&&!isNaN(Number(val))){try{const d=XLSX.SSF.parse_date_code(Number(val));val=`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;}catch(e){}}
+          row[fid]=val;
+        });
+        const mf=conf.required.filter(fid=>!row[fid]).map(fid=>fieldMap[fid]);
+        if(mf.length) rowErrors.push({rowNum,fields:mf});
+        else{validRows.push(row);if(tab==='tab1'&&!row['r_serialno']) rowWarnings.push({rowNum,msg:'Serial No. empty'});}
+      });
+      pendingImport={tab,rows:validRows,errors:rowErrors,warnings:rowWarnings,total:rawRows.length};
+      showImportModal(tab,rawRows.length,validRows.length,rowErrors,rowWarnings,missingCols);
+    }catch(err){showNotif('Failed to read file: '+err.message,'error');}
+  };
+  reader.readAsArrayBuffer(file);
+  setTimeout(()=>{try{event.target.value='';}catch(e){}},200);
+}
+
+function showImportModal(tab,total,validCount,errors,warnings,missingCols){
+  const tabLabels={tab1:'Received Assets',tab2:'Retired Assets',tab3:'Transfer/Updated'};
+  document.getElementById('modalTitle').textContent='Import Preview — '+tabLabels[tab];
+  let html=`<div class="ok-summary">📊 ${total} row${total!==1?'s':''} found — <strong>${validCount} valid</strong>, ${errors.length} with errors</div>`;
+  if(missingCols.length){html+=`<div class="section-divider">⚠️ Missing optional columns</div><ul class="error-list warn-list">`;missingCols.forEach(c=>{html+=`<li><span class="row-badge">COL</span> "${escHtml(c)}" not found — blank</li>`;});html+=`</ul>`;}
+  if(errors.length){html+=`<div class="section-divider">❌ Rows skipped</div><ul class="error-list">`;errors.forEach(e=>{html+=`<li><span class="row-badge">Row ${e.rowNum}</span> Missing: <strong>${escHtml(e.fields.join(', '))}</strong></li>`;});html+=`</ul>`;}
+  if(warnings.length){html+=`<div class="section-divider">⚠️ Notices</div><ul class="error-list warn-list">`;warnings.forEach(w=>{html+=`<li><span class="row-badge">Row ${w.rowNum}</span> ${escHtml(w.msg)}</li>`;});html+=`</ul>`;}
+  if(!validCount) html+=`<p style="margin-top:12px;color:var(--red);font-weight:600;font-size:13px">⛔ No valid rows. Fix issues and try again.</p>`;
+  document.getElementById('modalBody').innerHTML=html;
+  document.getElementById('modalImportBtn').style.display=validCount>0?'inline-flex':'none';
+  document.getElementById('modalImportBtn').textContent='✅ Import '+validCount+' Valid Row'+(validCount!==1?'s':'');
+  document.getElementById('importModal').classList.add('show');
+}
+function closeModal(){document.getElementById('importModal').classList.remove('show');}
+function confirmImport(){
+  const{tab,rows}=pendingImport;if(!tab||!rows.length) return;
+  state[tab].push(...rows);
+  logAction('import',tab,rows.length+' rows imported into '+CONFIG[tab].label,'-');
+  const nc=getConflicts().length;
+  if(nc) showNotif('Imported. ⚠ '+nc+' Tag ID conflict(s) detected!','warning');
+  else showNotif(rows.length+' row'+(rows.length!==1?'s':'')+' imported.');
+  save(tab);renderTable(tab);updateCount(tab);closeModal();
+  showImportResult(tab,'✅ '+rows.length+' rows imported.','ok');
+  pendingImport={tab:null,rows:[]};refreshDashboard();
+}
+function showImportResult(tab,msg,type){
+  const el=document.getElementById('ir'+tab.slice(-1));el.className='import-result '+type+' show';el.innerHTML=msg;
+  setTimeout(()=>el.classList.remove('show'),8000);
+}
+document.getElementById('importModal').addEventListener('click',function(e){if(e.target===this) closeModal();});
+
+init();
+</script>
+</body>
+</html>

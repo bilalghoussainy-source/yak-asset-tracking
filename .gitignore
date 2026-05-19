@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+.DS_Store
+Thumbs.db
+*.log
+.vercel
+
+# Original standalone HTML (may contain secrets; use src/app.template.html)
+EIAC - Asset Tracking Template*.html
