@@ -402,19 +402,25 @@ function sbH(extra){
   return Object.assign(h,extra||{});
 }
 
+async function sbErr(prefix,r){
+  const txt=await r.text().catch(()=>'');
+  let msg=prefix+' '+r.status;
+  try{const j=JSON.parse(txt);if(j.message) msg+=' — '+j.message;else if(j.error) msg+=' — '+j.error;}catch(e){if(txt) msg+=' — '+txt.slice(0,200);}
+  return new Error(msg);
+}
 async function sbGet(key){
   const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}&select=key,value,updated_at`,{headers:sbH({'Accept':'application/json'})});
   if(r.status===406||r.status===416) return null;
-  if(!r.ok) throw new Error('GET '+r.status);
+  if(!r.ok) throw await sbErr('GET',r);
   const rows=await r.json(); return rows.length?rows[0]:null;
 }
 async function sbSet(key,value){
   const r=await fetch(`${SB.url}/rest/v1/${SB.table}`,{method:'POST',headers:sbH({'Accept':'application/json'}),body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});
-  if(!r.ok) throw new Error('SET '+r.status);
+  if(!r.ok) throw await sbErr('SET',r);
 }
 async function sbDelete(key){
   const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}`,{method:'DELETE',headers:sbH({'Accept':'application/json'})});
-  if(!r.ok) throw new Error('DELETE '+r.status);
+  if(!r.ok) throw await sbErr('DELETE',r);
 }
 
 async function sha256Hex(str){
@@ -649,10 +655,19 @@ async function addClient(){
 
 async function removeClient(clientId){
   if(!confirm('Remove "'+clientId+'" from the admin list?\n\nData rows in Supabase are not deleted.')) return;
+  const prev=clients.slice();
   clients=clients.filter(c=>c.id!==clientId);
   saveClientsLocal();
   if(SB.url&&SB.key){
-    try{await pushRegistryToSupabase();}catch(e){showNotif('Registry sync: '+e.message,'error');}
+    try{
+      await pushRegistryToSupabase();
+    }catch(e){
+      clients=prev;
+      saveClientsLocal();
+      showNotif('Could not remove client: '+e.message,'error');
+      loadClients();
+      return;
+    }
   }
   loadClients();
   showNotif('"'+clientId+'" removed from admin list.','info');
@@ -773,7 +788,7 @@ async function saveUserModal(){
     let users=(idx.users||[]).filter(x=>x.slug!==slug);
     users.push({slug,displayUsername,role,clientId:role==='admin'?null:clientId});
     await writeUsersIndex(users);
-    showNotif('User saved','success');
+    showNotif(p1?'User saved. Password updated for this environment.':'User saved','success');
     closeUserModal();
     loadUsersTable();
   }catch(e){

@@ -1266,7 +1266,7 @@ function updateAuthLogoutBtns(){
   const bp=document.getElementById('btn-portal-logout');
   const ba=document.getElementById('btn-account-logout');
   const sess=readAppSession();
-  if(ba) ba.style.display=(CLIENT_ID!=='default'&&sess&&sess.role==='client'&&sess.clientId===CLIENT_ID)?'inline-block':'none';
+  if(ba) ba.style.display=(CLIENT_ID!=='default'&&sess&&sess.role==='client'&&String(sess.clientId||'').toLowerCase()===CLIENT_ID.toLowerCase())?'inline-block':'none';
   if(bp) bp.style.display=(CLIENT_ID!=='default'&&sessionStorage.getItem(portalSessKey()))?'inline-block':'none';
 }
 
@@ -1373,7 +1373,11 @@ async function submitRootLogin(){
     const expectedHash=String(j.passwordHash||'').trim();
     if(!expectedHash||(role!=='admin'&&role!=='client')){errEl.textContent='Invalid username or password.';errEl.classList.add('show');return;}
     const h=await authUserPwdHash(slug,p);
-    if(h!==expectedHash){errEl.textContent='Invalid username or password.';errEl.classList.add('show');return;}
+    if(h!==expectedHash){
+      errEl.textContent='Invalid password. If this account was created locally or before deploy, set PORTAL_AUTH_SALT to the same value on Vercel as when the user was created, redeploy, or open Admin → App users, edit this user, and set a new password.';
+      errEl.classList.add('show');
+      return;
+    }
     if(role==='client'){
       if(!clientId||!/^[a-zA-Z0-9_-]{1,64}$/.test(clientId)){errEl.textContent='User account is misconfigured (no client).';errEl.classList.add('show');return;}
       writeAppSession({slug,role:'client',clientId,displayUsername});
@@ -1412,7 +1416,8 @@ function initRootLogin(){
 async function init(){
   if(CLIENT_ID!=='default'){
     const sess=readAppSession();
-    if(!sess||sess.role!=='client'||sess.clientId!==CLIENT_ID){
+    const sessCid=sess&&sess.clientId?String(sess.clientId):'';
+    if(!sess||sess.role!=='client'||sessCid.toLowerCase()!==CLIENT_ID.toLowerCase()){
       const next=encodeURIComponent('/'+CLIENT_ID);
       location.replace('/?next='+next);
       return;
@@ -1440,7 +1445,7 @@ async function init(){
         return;
       }
       const sess=readAppSession();
-      const unifiedClientOk=sess&&sess.role==='client'&&sess.clientId===CLIENT_ID;
+      const unifiedClientOk=sess&&sess.role==='client'&&String(sess.clientId||'').toLowerCase()===CLIENT_ID.toLowerCase();
       let needPortal=false;
       if(!unifiedClientOk){
         const credRow=await sbGet('portal_creds');

@@ -40,9 +40,10 @@ const supabaseKey =
 const supabaseTable = process.env.SUPABASE_TABLE || 'asset_tracker';
 const adminPassword = process.env.ADMIN_PASSWORD || '';
 const bootstrapAdminUser = process.env.BOOTSTRAP_ADMIN_USER || 'admin';
+// Default must stay stable once users exist. Match .env.local / Vercel PORTAL_AUTH_SALT.
 const portalSalt =
   process.env.PORTAL_AUTH_SALT ||
-  'yak-asset-portal-salt-change-me-in-production';
+  'yak-local-dev-salt-change-for-production';
 
 if (!supabaseUrl || !supabaseKey) {
   console.warn(

@@ -54,7 +54,7 @@ Users live in the **same** `asset_tracker` (or your `SUPABASE_TABLE`) key–valu
    - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_TABLE`
    - `ADMIN_PASSWORD` — bootstrap admin password for `/` (optional but recommended for first login)
    - `BOOTSTRAP_ADMIN_USER` — bootstrap username (default `admin`)
-   - `PORTAL_AUTH_SALT` — long random secret; **do not change** after users exist, or password hashes stop matching
+   - `PORTAL_AUTH_SALT` — long random secret; **must be identical** in every environment (local `.env.local` and Vercel). If users were created locally, use the **same** salt on Vercel before redeploying, or reset each user’s password in **Admin → App users** after deploy.
 3. Deploy. Share **`https://your-app.vercel.app/`** with users; they only reach **`/{client}`** after authentication.
 
 ## Supabase table
