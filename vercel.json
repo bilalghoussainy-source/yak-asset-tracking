@@ -3,7 +3,15 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!api/|_vercel/).*)",
+      "source": "/admin",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/admin/",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/((?!api/|_vercel/|admin/).*)",
       "destination": "/index.html"
     }
   ]

@@ -26,6 +26,32 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 /* LOCK SCREEN */
 #lock-screen{display:none;position:fixed;inset:0;background:var(--blue);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:20px}
 #lock-screen.show{display:flex}
+#portal-login-screen{display:none;position:fixed;inset:0;background:var(--blue);z-index:9998;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
+#portal-login-screen.show{display:flex}
+#root-auth-screen{display:none;position:fixed;inset:0;background:linear-gradient(160deg,var(--blue) 0%,#3d4f63 100%);z-index:10002;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+#root-auth-screen.show{display:flex}
+body.root-auth-mode #sync-banner,
+body.root-auth-mode header,
+body.root-auth-mode .tab-bar,
+body.root-auth-mode .main{display:none!important}
+body.root-auth-mode #config-warning{display:none!important}
+.login-card{background:#fff;border-radius:14px;padding:32px 36px;width:100%;max-width:400px;box-shadow:var(--shadow-md);text-align:center}
+.login-card .login-logo{display:block;width:min(240px,85%);height:auto;margin:0 auto 22px;object-fit:contain}
+.login-card h2{font-size:20px;font-weight:700;color:var(--blue);margin:0 0 6px;text-align:center}
+.login-card .login-sub{font-size:13px;color:var(--text3);text-align:center;margin:0 auto 22px;max-width:300px;line-height:1.5}
+.login-card .field{margin-bottom:14px;text-align:left}
+.login-card .field label{display:block;text-align:left}
+.login-card .portal-err{text-align:left}
+.login-card .btn-login{width:100%;margin-top:6px;padding:11px;border:none;border-radius:7px;background:var(--blue);color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;transition:background 0.14s}
+.login-card .btn-login:hover{background:var(--blue-dk)}
+.portal-card{background:#fff;border-radius:14px;padding:28px 26px;width:100%;max-width:380px;box-shadow:var(--shadow-md)}
+.portal-card h2{font-size:18px;font-weight:700;color:var(--blue);margin-bottom:4px;text-align:center}
+.portal-card .portal-sub{font-size:12.5px;color:var(--text3);text-align:center;margin-bottom:18px}
+.portal-card .field{margin-bottom:12px}
+.portal-card label{font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px}
+.portal-card input{width:100%;border:1px solid var(--border2);border-radius:7px;padding:9px 11px;font-size:13.5px}
+.portal-err{display:none;background:var(--red-lt);border:1px solid #fca5a5;color:var(--red);font-size:12.5px;font-weight:600;padding:8px 10px;border-radius:6px;margin-bottom:10px}
+.portal-err.show{display:block}
 .lock-icon{font-size:56px;opacity:0.9}
 .lock-title{font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.5px}
 .lock-sub{font-size:14px;color:rgba(255,255,255,0.65);text-align:center;max-width:340px;line-height:1.6}
@@ -263,6 +289,31 @@ tbody tr.conflict-row{background:#fff5f5}
 </head>
 <body>
 
+<!-- ROOT LOGIN (/) — administrator → /admin, client → /{clientId} -->
+<div id="root-auth-screen">
+  <div class="login-card">
+    <img src="/span-logo.png" alt="SPAN" class="login-logo" width="240" height="80">
+    <h2>Asset Tracking</h2>
+    <p class="login-sub">Login to continue</p>
+    <div class="portal-err" id="root-auth-err"></div>
+    <div class="field"><label>Username</label><input type="text" id="root-auth-user" autocomplete="username" placeholder="Username" onkeydown="if(event.key==='Enter')submitRootLogin()"></div>
+    <div class="field"><label>Password</label><input type="password" id="root-auth-pw" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')submitRootLogin()"></div>
+    <button type="button" class="btn-login" onclick="submitRootLogin()">Login</button>
+  </div>
+</div>
+
+<!-- PORTAL LOGIN (username + password from admin) -->
+<div id="portal-login-screen">
+  <div class="portal-card">
+    <h2>Sign in</h2>
+    <div class="portal-sub">Client <strong id="portal-client-badge" style="color:var(--yellow-dk)"></strong> — enter the credentials your administrator gave you.</div>
+    <div class="portal-err" id="portal-login-err"></div>
+    <div class="field"><label>Username</label><input type="text" id="portal-user" autocomplete="username" placeholder="Username"></div>
+    <div class="field"><label>Password</label><input type="password" id="portal-pw" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')submitPortalLogin()"></div>
+    <button type="button" class="btn btn-primary" style="width:100%;margin-top:6px;padding:10px;border:none;border-radius:7px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif" onclick="submitPortalLogin()">Continue</button>
+  </div>
+</div>
+
 <!-- LOCK SCREEN -->
 <div id="lock-screen">
   <div class="lock-icon">🔒</div>
@@ -289,6 +340,8 @@ tbody tr.conflict-row{background:#fff5f5}
   <div class="logo-text"><span>Asset</span> Tracking</div>
   <span class="header-sub" id="client-label">— Asset Registration &amp; Management System</span>
   <div class="header-right">
+    <button type="button" id="btn-account-logout" onclick="accountLogout()" style="display:none;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-right:4px">Account sign out</button>
+    <button type="button" id="btn-portal-logout" onclick="portalLogout()" style="display:none;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-right:4px">Client sign out</button>
     <div class="live-stats">
       <div class="stat-chip"><span class="dot dot-green"></span><span id="hs-recv">0</span> Received</div>
       <div class="stat-chip"><span class="dot dot-red"></span><span id="hs-ret">0</span> Retired</div>
@@ -623,7 +676,7 @@ tbody tr.conflict-row{background:#fff5f5}
 //  CLIENT + SUPABASE (client from URL path; DB from build env)
 // ══════════════════════════════════════════════════════════════
 function resolveClientId(){
-  const reserved=new Set(['api','_vercel','favicon.ico','robots.txt','assets']);
+  const reserved=new Set(['api','_vercel','favicon.ico','robots.txt','assets','admin']);
   const seg=(window.location.pathname.split('/').filter(Boolean)[0]||'').trim();
   if(!seg||reserved.has(seg.toLowerCase())) return 'default';
   if(!/^[a-zA-Z0-9_-]{1,64}$/.test(seg)) return 'default';
@@ -633,12 +686,40 @@ const CLIENT_ID=resolveClientId();
 const SB_URL='__SUPABASE_URL__';
 const SB_KEY='__SUPABASE_ANON_KEY__';
 const SB_TABLE='__SUPABASE_TABLE__';
+const PORTAL_AUTH_SALT='__PORTAL_AUTH_SALT__';
+const BOOTSTRAP_ADMIN_USER=__BOOTSTRAP_ADMIN_USER_JSON__;
+const ADMIN_PASSWORD_BOOTSTRAP=__ADMIN_PASSWORD_JSON__;
 const USE_SUPABASE=Boolean(SB_URL&&SB_KEY&&SB_TABLE);
+const AUTH_USERS_INDEX_KEY='_auth_users_index';
+const APP_SESSION_KEY='app_session';
+
+function normalizeUserSlug(u){
+  const s=String(u||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_-]/g,'');
+  return s;
+}
+function readAppSession(){
+  try{return JSON.parse(sessionStorage.getItem(APP_SESSION_KEY)||'null');}catch(e){return null;}
+}
+function writeAppSession(obj){sessionStorage.setItem(APP_SESSION_KEY,JSON.stringify(obj));}
+function clearAppSession(){try{sessionStorage.removeItem(APP_SESSION_KEY);}catch(e){}}
+
+function portalSessKey(){return 'portal_sess_'+CLIENT_ID;}
+async function sha256Hex(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function portalPwdHash(clientId,password){
+  return sha256Hex(PORTAL_AUTH_SALT+':'+clientId+':'+password);
+}
+async function authUserPwdHash(slug,password){
+  return sha256Hex(PORTAL_AUTH_SALT+':auth:'+slug+':'+password);
+}
 
 // ══════════════════════════════════════════════════════════════
 //  SUPABASE HELPERS
 // ══════════════════════════════════════════════════════════════
 let _lastSyncTs = 0;
+let _portalPollStarted=false;
 function sbHeaders(extra){
   // Supports both old anon key (eyJ...) and new publishable key (sb_publishable_...)
   const isNewKey = SB_KEY.startsWith('sb_publishable_') || SB_KEY.startsWith('sb_secret_');
@@ -668,6 +749,22 @@ async function sbSet(key,value){
     const txt=await r.text().catch(()=>'');
     throw new Error('SB SET '+r.status+' '+txt);
   }
+}
+async function sbGetGlobal(key){
+  const url=`${SB_URL}/rest/v1/${SB_TABLE}?key=eq.${encodeURIComponent(key)}&select=value,updated_at`;
+  const r=await fetch(url,{headers:sbHeaders({'Accept':'application/json'})});
+  if(r.status===406||r.status===416) return null;
+  if(!r.ok){const txt=await r.text().catch(()=>'');throw new Error('SB GET '+r.status+' '+txt);}
+  const rows=await r.json(); return rows.length?rows[0]:null;
+}
+async function sbSetGlobal(key,value){
+  const body=JSON.stringify({key,value,updated_at:new Date().toISOString()});
+  const r=await fetch(`${SB_URL}/rest/v1/${SB_TABLE}`,{
+    method:'POST',
+    headers:sbHeaders({'Prefer':'resolution=merge-duplicates','Accept':'application/json'}),
+    body
+  });
+  if(!r.ok){const txt=await r.text().catch(()=>'');throw new Error('SB SET '+r.status+' '+txt);}
 }
 // Debug helper — run testSBWrite() in browser console to diagnose connection
 async function testSBWrite(){
@@ -1136,19 +1233,196 @@ let auditFilter='all';
 // ══════════════════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════════════════
+async function loadSupabaseTablesAndRef(){
+  const [recvRow,retRow,trRow]=await Promise.all([
+    sbGet('received'),sbGet('retired'),sbGet('transfers')
+  ]);
+  if(recvRow && recvRow.value){const d=JSON.parse(recvRow.value);state.tab1=d.rows||[];}
+  if(retRow  && retRow.value) {const d=JSON.parse(retRow.value); state.tab2=d.rows||[];}
+  if(trRow   && trRow.value)  {const d=JSON.parse(trRow.value);  state.tab3=d.rows||[];}
+  const tsList=[recvRow,retRow,trRow].filter(Boolean).map(r=>new Date(r.updated_at).getTime());
+  if(tsList.length) _lastSyncTs=Math.max(...tsList);
+  const auditRow=await sbGet('audit');
+  if(auditRow && auditRow.value) auditLog=JSON.parse(auditRow.value)||[];
+  const locRow=await sbGet('refdata_location');
+  if(locRow && locRow.value){refData.locTree=JSON.parse(locRow.value);refData.loaded.loc=true;}
+  const catRow=await sbGet('refdata_category');
+  if(catRow && catRow.value){refData.catTree=JSON.parse(catRow.value);refData.loaded.cat=true;}
+  const deptRow=await sbGet('refdata_department');
+  if(deptRow && deptRow.value){refData.deptMap=JSON.parse(deptRow.value);refData.loaded.dept=true;}
+  updateRefStatus();
+  setSyncUI('ok','Synced');
+}
+
+function finishInitUI(){
+  updateRefStatus();
+  ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
+  renderAuditLog(); refreshDashboard();
+  updateAuthLogoutBtns();
+  startSupabasePoll();
+}
+
+function updateAuthLogoutBtns(){
+  const bp=document.getElementById('btn-portal-logout');
+  const ba=document.getElementById('btn-account-logout');
+  const sess=readAppSession();
+  if(ba) ba.style.display=(CLIENT_ID!=='default'&&sess&&sess.role==='client'&&sess.clientId===CLIENT_ID)?'inline-block':'none';
+  if(bp) bp.style.display=(CLIENT_ID!=='default'&&sessionStorage.getItem(portalSessKey()))?'inline-block':'none';
+}
+
+function startSupabasePoll(){
+  if(_portalPollStarted||!USE_SUPABASE) return;
+  _portalPollStarted=true;
+  setInterval(async()=>{
+    try{
+      const [recvRow,retRow,trRow]=await Promise.all([
+        sbGet('received'),sbGet('retired'),sbGet('transfers')
+      ]);
+      const rows=[recvRow,retRow,trRow];
+      const times=rows.filter(Boolean).map(r=>new Date(r.updated_at).getTime()).filter(t=>!isNaN(t));
+      if(!times.length) return;
+      const maxRemoteTs=Math.max(...times);
+      if(maxRemoteTs>_lastSyncTs+1500){
+        _lastSyncTs=maxRemoteTs;
+        if(recvRow && recvRow.value){const d=JSON.parse(recvRow.value);state.tab1=d.rows||[];}
+        if(retRow  && retRow.value) {const d=JSON.parse(retRow.value); state.tab2=d.rows||[];}
+        if(trRow   && trRow.value)  {const d=JSON.parse(trRow.value);  state.tab3=d.rows||[];}
+        ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
+        refreshDashboard();
+        showNotif('🔄 Data updated by teammate','info');
+        setSyncUI('ok','Synced');
+      }
+    }catch(e){setSyncUI('err','Sync error');}
+  },25000);
+}
+
+async function submitPortalLogin(){
+  const errEl=document.getElementById('portal-login-err');
+  errEl.classList.remove('show');
+  errEl.textContent='';
+  const u=(document.getElementById('portal-user').value||'').trim();
+  const p=document.getElementById('portal-pw').value||'';
+  if(!u||!p){errEl.textContent='Enter username and password.';errEl.classList.add('show');return;}
+  try{
+    const credRow=await sbGet('portal_creds');
+    if(!credRow||credRow.value==null){errEl.textContent='No portal credentials configured.';errEl.classList.add('show');return;}
+    let j=typeof credRow.value==='string'?JSON.parse(credRow.value):credRow.value;
+    const expectedUser=String(j.username||'').trim();
+    const expectedHash=String(j.passwordHash||'').trim();
+    if(!expectedUser||!expectedHash){errEl.textContent='Portal login not configured.';errEl.classList.add('show');return;}
+    if(u!==expectedUser){errEl.textContent='Invalid username or password.';errEl.classList.add('show');return;}
+    const h=await portalPwdHash(CLIENT_ID,p);
+    if(h!==expectedHash){errEl.textContent='Invalid username or password.';errEl.classList.add('show');return;}
+    sessionStorage.setItem(portalSessKey(),'1');
+    document.getElementById('portal-login-screen').classList.remove('show');
+    setSyncUI('busy','Loading…');
+    await loadSupabaseTablesAndRef();
+    finishInitUI();
+  }catch(e){
+    errEl.textContent='Could not verify: '+(e.message||String(e));
+    errEl.classList.add('show');
+  }
+}
+
+function portalLogout(){
+  try{sessionStorage.removeItem(portalSessKey());}catch(e){}
+  location.reload();
+}
+
+function accountLogout(){
+  clearAppSession();
+  try{sessionStorage.removeItem(portalSessKey());}catch(e){}
+  location.href='/'+(location.search||'');
+}
+
+async function submitRootLogin(){
+  const errEl=document.getElementById('root-auth-err');
+  errEl.classList.remove('show');
+  errEl.textContent='';
+  const u=(document.getElementById('root-auth-user').value||'').trim();
+  const p=document.getElementById('root-auth-pw').value||'';
+  if(!u||!p){errEl.textContent='Enter username and password.';errEl.classList.add('show');return;}
+  const slug=normalizeUserSlug(u);
+  if(!slug){errEl.textContent='Invalid username.';errEl.classList.add('show');return;}
+  try{
+    const bootUser=String(BOOTSTRAP_ADMIN_USER||'admin').trim();
+    const bootPw=String(ADMIN_PASSWORD_BOOTSTRAP||'');
+    if(bootUser&&bootPw&&u.toLowerCase()===bootUser.toLowerCase()&&p===bootPw){
+      writeAppSession({slug:'__bootstrap__',role:'admin',clientId:null,displayUsername:bootUser});
+      const next=new URLSearchParams(location.search).get('next')||'/admin';
+      location.href=next.startsWith('/')?next:'/admin';
+      return;
+    }
+    if(bootUser&&u.toLowerCase()===bootUser.toLowerCase()&&!bootPw){
+      errEl.textContent='Bootstrap admin password is not set in this build. Run npm run build (reads .env.local), then npm run dev, and hard-refresh the page.';
+      errEl.classList.add('show');
+      return;
+    }
+    if(bootUser&&u.toLowerCase()===bootUser.toLowerCase()&&bootPw){
+      errEl.textContent='Wrong password for bootstrap admin ('+bootUser+'). Check ADMIN_PASSWORD in .env.local, then npm run build.';
+      errEl.classList.add('show');
+      return;
+    }
+    if(!USE_SUPABASE){errEl.textContent='Server not configured.';errEl.classList.add('show');return;}
+    const row=await sbGetGlobal('_auth_user_'+slug);
+    if(!row||row.value==null){errEl.textContent='Unknown user. Create this account in Admin → App users, or sign in as '+bootUser+' (bootstrap).';errEl.classList.add('show');return;}
+    const j=typeof row.value==='string'?JSON.parse(row.value):row.value;
+    const role=String(j.role||'');
+    const clientId=j.clientId!=null?String(j.clientId).trim():'';
+    const displayUsername=String(j.displayUsername||u).trim();
+    const expectedHash=String(j.passwordHash||'').trim();
+    if(!expectedHash||(role!=='admin'&&role!=='client')){errEl.textContent='Invalid username or password.';errEl.classList.add('show');return;}
+    const h=await authUserPwdHash(slug,p);
+    if(h!==expectedHash){errEl.textContent='Invalid username or password.';errEl.classList.add('show');return;}
+    if(role==='client'){
+      if(!clientId||!/^[a-zA-Z0-9_-]{1,64}$/.test(clientId)){errEl.textContent='User account is misconfigured (no client).';errEl.classList.add('show');return;}
+      writeAppSession({slug,role:'client',clientId,displayUsername});
+      const next=new URLSearchParams(location.search).get('next')||'';
+      if(next&&next.startsWith('/')&&next.split('/').filter(Boolean)[0]===clientId) location.href=next;
+      else location.href='/'+clientId;
+      return;
+    }
+    if(role==='admin'){
+      writeAppSession({slug,role:'admin',clientId:null,displayUsername});
+      const next=new URLSearchParams(location.search).get('next')||'/admin';
+      location.href=next.startsWith('/')?next:'/admin';
+      return;
+    }
+    errEl.textContent='Invalid username or password.';
+    errEl.classList.add('show');
+  }catch(e){
+    errEl.textContent=(e.message||String(e));
+    errEl.classList.add('show');
+  }
+}
+
+function initRootLogin(){
+  const sess=readAppSession();
+  if(sess&&sess.role==='admin'){location.replace('/admin');return;}
+  if(sess&&sess.role==='client'&&sess.clientId){location.replace('/'+sess.clientId);return;}
+  document.body.classList.add('root-auth-mode');
+  document.getElementById('root-auth-screen').classList.add('show');
+  if(!USE_SUPABASE){
+    const e=document.getElementById('root-auth-err');
+    e.textContent='Configure SUPABASE_URL and SUPABASE_ANON_KEY (except bootstrap admin if env password is set).';
+    e.classList.add('show');
+  }
+}
+
 async function init(){
-  // Show client label
+  if(CLIENT_ID!=='default'){
+    const sess=readAppSession();
+    if(!sess||sess.role!=='client'||sess.clientId!==CLIENT_ID){
+      const next=encodeURIComponent('/'+CLIENT_ID);
+      location.replace('/?next='+next);
+      return;
+    }
+  }
+
   const lbl=document.getElementById('client-label');
   if(CLIENT_ID!=='default' && lbl) lbl.innerHTML='— <strong style="color:var(--yellow)">'+CLIENT_ID.toUpperCase()+'</strong> &nbsp;|&nbsp; Asset Registration &amp; Management System';
   if(CLIENT_ID!=='default') document.title=CLIENT_ID.toUpperCase()+' — Asset Tracking';
-  if(CLIENT_ID==='default'){
-    const w=document.getElementById('config-warning');
-    const ex=document.getElementById('config-warning-example');
-    if(ex) ex.textContent=window.location.origin+'/EIAC';
-    if(w) w.style.display='flex';
-  }
 
-  // Load reference data from localStorage first (fast)
   try{const ld=localStorage.getItem(CLIENT_ID+'_refdata_location');if(ld){refData.locTree=JSON.parse(ld);refData.loaded.loc=true;}}catch(e){}
   try{const cd=localStorage.getItem(CLIENT_ID+'_refdata_category');if(cd){refData.catTree=JSON.parse(cd);refData.loaded.cat=true;}}catch(e){}
   try{const dd=localStorage.getItem(CLIENT_ID+'_refdata_department');if(dd){refData.deptMap=JSON.parse(dd);refData.loaded.dept=true;}}catch(e){}
@@ -1157,73 +1431,43 @@ async function init(){
   if(USE_SUPABASE){
     setSyncUI('busy','Checking access…');
     try{
-      // Check active flag
       const flagRow=await sbGet('active');
-      const isActive = !flagRow || flagRow.value==='true' || flagRow.value===true;
+      const isActive=!flagRow||flagRow.value==='true'||flagRow.value===true;
       if(!isActive){
         document.getElementById('lock-screen').classList.add('show');
         document.getElementById('lock-client-name').textContent=CLIENT_ID.toUpperCase();
         setSyncUI('err','Tool deactivated');
         return;
       }
-      // Load each tab from its own Supabase row
-      const [recvRow,retRow,trRow]=await Promise.all([
-        sbGet('received'),sbGet('retired'),sbGet('transfers')
-      ]);
-      if(recvRow && recvRow.value){const d=JSON.parse(recvRow.value);state.tab1=d.rows||[];}
-      if(retRow  && retRow.value) {const d=JSON.parse(retRow.value); state.tab2=d.rows||[];}
-      if(trRow   && trRow.value)  {const d=JSON.parse(trRow.value);  state.tab3=d.rows||[];}
-      // Use the most recent updated_at across the three rows for sync timestamp
-      const tsList=[recvRow,retRow,trRow].filter(Boolean).map(r=>new Date(r.updated_at).getTime());
-      if(tsList.length) _lastSyncTs=Math.max(...tsList);
-      // Load audit log
-      const auditRow=await sbGet('audit');
-      if(auditRow && auditRow.value) auditLog=JSON.parse(auditRow.value)||[];
-      // Load ref data from Supabase if newer
-      const locRow=await sbGet('refdata_location');
-      if(locRow && locRow.value){refData.locTree=JSON.parse(locRow.value);refData.loaded.loc=true;}
-      const catRow=await sbGet('refdata_category');
-      if(catRow && catRow.value){refData.catTree=JSON.parse(catRow.value);refData.loaded.cat=true;}
-      const deptRow=await sbGet('refdata_department');
-      if(deptRow && deptRow.value){refData.deptMap=JSON.parse(deptRow.value);refData.loaded.dept=true;}
-      // Re-populate dropdowns now that Supabase refdata is loaded (may be newer than localStorage)
-      updateRefStatus();
-      setSyncUI('ok','Synced');
+      const sess=readAppSession();
+      const unifiedClientOk=sess&&sess.role==='client'&&sess.clientId===CLIENT_ID;
+      let needPortal=false;
+      if(!unifiedClientOk){
+        const credRow=await sbGet('portal_creds');
+        if(credRow&&credRow.value!=null){
+          try{
+            const j=typeof credRow.value==='string'?JSON.parse(credRow.value):credRow.value;
+            if(j&&String(j.username||'').trim()&&String(j.passwordHash||'').trim()) needPortal=true;
+          }catch(e){}
+        }
+      }
+      if(needPortal&&!sessionStorage.getItem(portalSessKey())){
+        document.getElementById('portal-client-badge').textContent=CLIENT_ID.toUpperCase();
+        document.getElementById('portal-login-screen').classList.add('show');
+        setSyncUI('busy','Sign in required');
+        return;
+      }
+      await loadSupabaseTablesAndRef();
     }catch(err){
       setSyncUI('err','Offline — using local data');
       loadFromLocal();
-      updateRefStatus(); // ensure dropdowns populate from localStorage when offline
+      updateRefStatus();
     }
   } else {
     loadFromLocal();
   }
 
-  updateRefStatus();
-  ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
-  renderAuditLog(); refreshDashboard();
-
-  // Poll Supabase every 25 seconds for teammate changes
-  if(USE_SUPABASE){
-    setInterval(async()=>{
-      try{
-        const [recvRow,retRow,trRow]=await Promise.all([
-          sbGet('received'),sbGet('retired'),sbGet('transfers')
-        ]);
-        const rows=[recvRow,retRow,trRow];
-        const maxRemoteTs=Math.max(...rows.filter(Boolean).map(r=>new Date(r.updated_at).getTime()));
-        if(maxRemoteTs>_lastSyncTs+1500){
-          _lastSyncTs=maxRemoteTs;
-          if(recvRow && recvRow.value){const d=JSON.parse(recvRow.value);state.tab1=d.rows||[];}
-          if(retRow  && retRow.value) {const d=JSON.parse(retRow.value); state.tab2=d.rows||[];}
-          if(trRow   && trRow.value)  {const d=JSON.parse(trRow.value);  state.tab3=d.rows||[];}
-          ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
-          refreshDashboard();
-          showNotif('🔄 Data updated by teammate','info');
-          setSyncUI('ok','Synced');
-        }
-      }catch(e){setSyncUI('err','Sync error');}
-    },25000);
-  }
+  finishInitUI();
 }
 
 function loadFromLocal(){
@@ -1640,7 +1884,8 @@ function showImportResult(tab,msg,type){
 }
 document.getElementById('importModal').addEventListener('click',function(e){if(e.target===this) closeModal();});
 
-init();
+if(CLIENT_ID==='default') initRootLogin();
+else init();
 </script>
 </body>
 </html>

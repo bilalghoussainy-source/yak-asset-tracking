@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Asset Tracker — Admin Panel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#f4f6f9;--surface:#fff;--surface2:#f0f2f6;
+  --border:#dde1ea;--border2:#c8cdd9;
+  --blue:#576A84;--blue-lt:#EEF1F5;--blue-dk:#3d4f63;
+  --yellow:#FFC000;--yellow-lt:#FFF8E1;--yellow-dk:#b38600;
+  --green:#1a8a4a;--green-lt:#e4f5ec;
+  --red:#c0392b;--red-lt:#fde8e6;
+  --text:#1a1d2e;--text2:#4b5370;--text3:#9198b4;
+  --radius:8px;
+  --shadow:0 2px 12px rgba(87,106,132,0.10);
+  --shadow-md:0 6px 24px rgba(87,106,132,0.16);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* LOGIN */
+#login-screen{display:none}
+.login-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:40px 36px;width:380px;box-shadow:var(--shadow-md);text-align:center}
+.login-logo{width:52px;height:52px;background:linear-gradient(135deg,var(--blue) 60%,var(--yellow) 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 18px}
+.login-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--text3);margin-bottom:28px}
+.login-field{text-align:left;margin-bottom:16px}
+.login-field label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:5px}
+.login-field input{width:100%;border:1px solid var(--border2);border-radius:7px;padding:10px 13px;font-family:'Inter',sans-serif;font-size:13.5px;color:var(--text);outline:none;transition:border-color 0.14s}
+.login-field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(87,106,132,0.15)}
+.login-err{background:var(--red-lt);border:1px solid #fca5a5;border-radius:6px;padding:8px 13px;font-size:12.5px;color:var(--red);font-weight:600;margin-bottom:14px;display:none}
+.login-err.show{display:block}
+.btn-login{width:100%;background:var(--blue);color:#fff;border:none;border-radius:7px;padding:11px;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.14s;margin-top:4px}
+.btn-login:hover{background:var(--blue-dk);transform:translateY(-1px);box-shadow:0 4px 12px rgba(87,106,132,0.3)}
+.login-note{font-size:11.5px;color:var(--text3);margin-top:20px;line-height:1.6}
+
+/* MAIN APP */
+#app{display:none}
+header{background:#fff;border-bottom:3px solid var(--yellow);padding:0 32px;height:58px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
+.logo-box{width:34px;height:34px;background:linear-gradient(135deg,var(--blue) 60%,var(--yellow) 100%);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.logo-text{font-size:15px;font-weight:700;color:var(--blue);letter-spacing:-0.3px}
+.logo-text span{color:var(--yellow)}
+.header-badge{background:var(--red-lt);color:var(--red);border:1px solid #fca5a5;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:0.3px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.btn-logout{background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:5px 14px;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer}
+.btn-logout:hover{background:var(--border)}
+
+.main{padding:28px 32px;max-width:1200px;margin:0 auto}
+
+/* CONFIG CARD */
+.config-card{background:#fff;border:1px solid var(--border);border-left:4px solid var(--yellow);border-radius:var(--radius);padding:20px 24px;margin-bottom:24px;box-shadow:var(--shadow)}
+.config-title{font-size:11.5px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:16px}
+.config-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 16px}
+@media(max-width:700px){.config-grid{grid-template-columns:1fr}}
+.cfg-field{display:flex;flex-direction:column;gap:4px}
+.cfg-field label{font-size:11px;font-weight:600;color:var(--text2)}
+.cfg-field input{border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text);outline:none;transition:border-color 0.14s;background:#fafbfc}
+.cfg-field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(87,106,132,0.12)}
+.cfg-actions{display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap}
+.btn{padding:8px 18px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.14s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-dk);box-shadow:0 3px 10px rgba(87,106,132,0.28);transform:translateY(-1px)}
+.btn-secondary{background:#fff;color:var(--blue);border:1px solid var(--border2)}
+.btn-secondary:hover{background:var(--blue-lt)}
+.btn-danger{background:#fff;color:var(--red);border:1px solid var(--border)}
+.btn-danger:hover{background:var(--red-lt);border-color:var(--red)}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:5px}
+.conn-status{font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:6px}
+.conn-status.ok{background:var(--green-lt);color:var(--green)}
+.conn-status.err{background:var(--red-lt);color:var(--red)}
+.conn-status.checking{background:var(--yellow-lt);color:var(--yellow-dk)}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green)}.dot-red{background:var(--red)}.dot-amber{background:var(--yellow-dk)}
+
+/* ADD CLIENT */
+.add-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:24px;box-shadow:var(--shadow)}
+.add-title{font-size:11.5px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:14px}
+.add-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.add-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px}
+.add-field label{font-size:11px;font-weight:600;color:var(--text2)}
+.add-field input{border:1px solid var(--border2);border-radius:6px;padding:8px 11px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color 0.14s}
+.add-field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(87,106,132,0.12)}
+.add-hint{font-size:11px;color:var(--text3);margin-top:8px;grid-column:1/-1}
+
+/* CLIENT TABLE */
+.clients-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.clients-header{padding:14px 20px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.clients-header h2{font-size:13px;font-weight:700;color:var(--blue);flex:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--blue)}
+th{text-align:left;padding:10px 16px;font-size:10.5px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;border-bottom:2px solid var(--yellow)}
+td{padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:background 0.1s}
+tbody tr:hover{background:var(--surface2)}
+.client-id{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:600;color:var(--blue)}
+.status-toggle{display:flex;align-items:center;gap:10px}
+.toggle-wrap{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-wrap input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;z-index:2;margin:0}
+.toggle-track{position:absolute;inset:0;background:var(--border2);border-radius:12px;transition:background 0.2s}
+.toggle-wrap input:checked ~ .toggle-track{background:var(--green)}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle-wrap input:checked ~ .toggle-track ~ .toggle-thumb{transform:translateX(20px)}
+.status-label{font-size:12px;font-weight:700}
+.status-label.active{color:var(--green)}.status-label.inactive{color:var(--red)}
+.count-badge{background:var(--blue-lt);color:var(--blue);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:4px;display:inline-block}
+.last-sync{font-size:11.5px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.loading-row td{text-align:center;padding:30px;color:var(--text3);font-style:italic}
+.empty-clients{text-align:center;padding:40px;color:var(--text3)}
+.empty-clients .icon{font-size:28px;margin-bottom:8px}
+.actions-cell{display:flex;gap:6px}
+
+/* NOTIF */
+.notif{position:fixed;bottom:20px;right:20px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px;font-weight:500;box-shadow:var(--shadow-md);display:flex;align-items:center;gap:8px;transform:translateY(10px);opacity:0;transition:all 0.2s;z-index:999;max-width:340px}
+.notif.show{opacity:1;transform:translateY(0)}
+.notif.success{border-left:3px solid var(--green)}
+.notif.error{border-left:3px solid var(--red)}
+.notif.info{border-left:3px solid var(--blue)}
+
+/* SETUP GUIDE */
+.setup-guide{background:var(--yellow-lt);border:1px solid var(--yellow);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px}
+.setup-guide h3{font-size:12px;font-weight:700;color:var(--yellow-dk);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px}
+.setup-steps{display:flex;flex-direction:column;gap:6px}
+.setup-step{font-size:12.5px;color:var(--yellow-dk);display:flex;gap:8px}
+.step-num{background:var(--yellow);color:#1a1000;font-size:10.5px;font-weight:800;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+code{background:rgba(87,106,132,0.1);padding:1px 5px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+
+@media(max-width:700px){.main{padding:14px}.config-grid{grid-template-columns:1fr}}
+
+/* MODAL (portal creds) */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:12px;box-shadow:var(--shadow-md);width:100%;max-width:420px;padding:22px 24px}
+.modal-box h3{font-size:15px;font-weight:700;color:var(--blue);margin-bottom:14px}
+.modal-box .login-field{margin-bottom:12px}
+.modal-box .btn{margin-top:6px}
+.modal-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.portal-user{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green);font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN (unused — session from site root) ═══════════ -->
+<div id="login-screen" style="display:none"></div>
+
+<!-- ═══════════ MAIN APP ═══════════ -->
+<div id="app">
+  <header>
+    <div class="logo-box">📦</div>
+    <div class="logo-text"><span>Asset</span> Tracking</div>
+    <div class="header-badge">🔐 ADMIN PANEL</div>
+    <div class="header-right">
+      <span id="hdr-conn" class="conn-status checking"><span class="dot dot-amber"></span>Not connected</span>
+      <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <!-- Setup guide (shown until connected) -->
+    <div class="setup-guide" id="setup-guide">
+      <h3>⚡ Quick Setup — First Time Only</h3>
+      <div class="setup-steps">
+        <div class="setup-step"><span class="step-num">1</span><span>Go to <strong>supabase.com</strong> → Create a free project (one project covers ALL clients)</span></div>
+        <div class="setup-step"><span class="step-num">2</span><span>In your project: <strong>SQL Editor</strong> → Run this: <code>create table asset_tracker (key text primary key, value text, updated_at timestamptz default now());</code></span></div>
+        <div class="setup-step"><span class="step-num">3</span><span>Go to <strong>Project Settings → API</strong> → copy your Project URL and anon/public key below</span></div>
+        <div class="setup-step"><span class="step-num">4</span><span>Paste them into the Supabase Connection fields below and click <strong>Connect &amp; Save</strong></span></div>
+        <div class="setup-step"><span class="step-num">5</span><span>Sign in at your site <strong>root URL</strong> (<code>/</code>). Add <strong>App users</strong> below (admin vs client). Share <code>https://your-app.vercel.app/</code> — clients are sent to their workspace after login.</span></div>
+      </div>
+    </div>
+
+    <!-- Supabase config -->
+    <div class="config-card">
+      <div class="config-title">🔌 Supabase Connection</div>
+      <div class="config-grid">
+        <div class="cfg-field" style="grid-column:1/3">
+          <label>Project URL</label>
+          <input type="text" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
+        </div>
+        <div class="cfg-field">
+          <label>Table Name</label>
+          <input type="text" id="cfg-table" placeholder="asset_tracker" value="asset_tracker">
+        </div>
+        <div class="cfg-field" style="grid-column:1/-1">
+          <label>Anon / Public Key</label>
+          <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…">
+        </div>
+      </div>
+      <div class="cfg-actions">
+        <button class="btn btn-primary" onclick="connectSupabase()">🔌 Connect &amp; Save</button>
+        <button class="btn btn-secondary" onclick="testConnection()">🔍 Test Connection</button>
+        <span id="conn-result"></span>
+      </div>
+      <p id="config-card-note" style="display:none;margin-top:12px;font-size:12px;color:var(--text3)">Supabase URL and key are injected at deploy from Vercel environment variables. Override above only for local testing.</p>
+    </div>
+
+    <!-- Add client -->
+    <div class="add-card">
+      <div class="add-title">➕ Add / Register Client</div>
+      <div class="add-row">
+        <div class="add-field">
+          <label>Client ID</label>
+          <input type="text" id="new-client-id" placeholder="e.g. acme_corp (no spaces)">
+        </div>
+        <div class="add-field">
+          <label>Display Name</label>
+          <input type="text" id="new-client-name" placeholder="e.g. Acme Corporation">
+        </div>
+        <button class="btn btn-primary" onclick="addClient()">+ Add Client</button>
+      </div>
+      <div class="add-hint">Client ID must match the URL path (e.g. <code>/EIAC</code> → <code>EIAC</code>). Letters, numbers, <code>_</code> and <code>-</code> only.</div>
+    </div>
+
+    <!-- App users (root / login) -->
+    <div class="add-card">
+      <div class="add-title">👤 App users — sign in at site root (<code>/</code>)</div>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Each user has a <strong>login username</strong> (letters, numbers, <code>_</code>, <code>-</code>), a <strong>role</strong>, and optional <strong>client ID</strong> for client users. Passwords are stored hashed in Supabase.</p>
+      <div class="add-row" style="margin-bottom:10px">
+        <button type="button" class="btn btn-primary" onclick="openUserModal(null)">+ Add user</button>
+        <button type="button" class="btn btn-secondary" onclick="loadUsersTable()">🔄 Refresh users</button>
+      </div>
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)">
+        <table>
+          <thead><tr><th>Login</th><th>Display name</th><th>Role</th><th>Client ID</th><th>Actions</th></tr></thead>
+          <tbody id="users-tbody"><tr><td colspan="5" style="padding:16px;color:var(--text3)">Connect to Supabase, then refresh.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Clients table -->
+    <div class="clients-card">
+      <div class="clients-header">
+        <h2>👥 Client Tools</h2>
+        <button class="btn btn-secondary btn-sm" onclick="loadClients()">🔄 Refresh</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Client ID</th>
+              <th>Display Name</th>
+              <th>Portal login</th>
+              <th>Tool Status</th>
+              <th>Records</th>
+              <th>Last Activity</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="clients-tbody">
+            <tr class="loading-row"><td colspan="7">Connect to Supabase to load clients</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<div class="modal-overlay" id="user-modal" onclick="if(event.target===this)closeUserModal()">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:440px">
+    <h3 id="user-modal-title">Add user</h3>
+    <div class="login-field"><label>Login username</label><input type="text" id="um-login" placeholder="e.g. jdoe" autocomplete="off"></div>
+    <div class="login-field"><label>Display name</label><input type="text" id="um-display" placeholder="Optional" autocomplete="off"></div>
+    <div class="login-field"><label>Role</label><select id="um-role" onchange="umToggleClient()"><option value="client">Client user</option><option value="admin">Administrator</option></select></div>
+    <div class="login-field" id="um-client-wrap"><label>Client ID (URL segment)</label><input type="text" id="um-client" placeholder="EIAC" autocomplete="off"></div>
+    <div class="login-field"><label id="um-pw1-lbl">Password</label><input type="password" id="um-pw1" autocomplete="new-password"></div>
+    <div class="login-field"><label>Confirm password</label><input type="password" id="um-pw2" autocomplete="new-password"></div>
+    <div class="login-err" id="um-err" style="display:none;margin-bottom:10px"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" onclick="saveUserModal()">Save</button>
+      <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="creds-modal" onclick="if(event.target===this)closeCredsModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3>🔑 Portal login — <span id="creds-modal-client"></span></h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Clients use this username and password to open the asset tool. Leave username empty to disable portal login (URL only).</p>
+    <div class="login-field"><label>Username</label><input type="text" id="creds-user" placeholder="e.g. acme_ops" autocomplete="off"></div>
+    <div class="login-field"><label>New password</label><input type="password" id="creds-pw1" placeholder="Min 6 characters" autocomplete="new-password"></div>
+    <div class="login-field"><label>Confirm password</label><input type="password" id="creds-pw2" placeholder="Repeat password" autocomplete="new-password"></div>
+    <div class="login-err" id="creds-err" style="display:none;margin-bottom:10px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" type="button" onclick="savePortalCreds()">Save credentials</button>
+      <button class="btn btn-danger" type="button" onclick="clearPortalCreds()">Clear login</button>
+      <button class="btn btn-secondary" type="button" onclick="closeCredsModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+const PORTAL_AUTH_SALT='__PORTAL_AUTH_SALT__';
+const REGISTRY_KEY='_admin_clients_registry';
+const AUTH_USERS_INDEX_KEY='_auth_users_index';
+const APP_SESSION_KEY='app_session';
+
+function normalizeUserSlug(u){
+  return String(u||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_-]/g,'');
+}
+
+function loadSavedConfig(){
+  const builtUrl='__SUPABASE_URL__';
+  const builtKey='__SUPABASE_ANON_KEY__';
+  const builtTable='__SUPABASE_TABLE__';
+  const hasBuilt=builtUrl&&builtKey&&builtTable&&!builtUrl.includes('__SUPABASE');
+  if(hasBuilt){
+    SB.url=builtUrl.trim().replace(/\/$/,'');
+    SB.key=builtKey.trim();
+    SB.table=(builtTable||'asset_tracker').trim();
+    document.getElementById('cfg-url').value=SB.url;
+    document.getElementById('cfg-key').value=SB.key;
+    document.getElementById('cfg-table').value=SB.table;
+    document.getElementById('setup-guide').style.display='none';
+    document.getElementById('config-card-note').style.display='block';
+    testConnection(true);
+  } else {
+    const saved=localStorage.getItem('admin_sb_config');
+    if(saved){
+      try{
+        const c=JSON.parse(saved);
+        SB.url=(c.url||'').trim().replace(/\/$/,'');
+        SB.key=(c.key||'').trim();
+        SB.table=(c.table||'asset_tracker').trim();
+        document.getElementById('cfg-url').value=SB.url||'';
+        document.getElementById('cfg-key').value=SB.key||'';
+        document.getElementById('cfg-table').value=SB.table||'asset_tracker';
+        if(SB.url&&SB.key){
+          document.getElementById('setup-guide').style.display='none';
+          testConnection(true);
+        }
+      }catch(e){}
+    }
+  }
+  if(!hasBuilt) loadRegistryThenRender();
+}
+
+async function loadRegistryThenRender(){
+  await pullRegistryFromSupabase();
+  renderClientsFromLocal();
+}
+
+function doLogout(){
+  try{sessionStorage.removeItem(APP_SESSION_KEY);}catch(e){}
+  location.href='/';
+}
+
+let SB={url:'',key:'',table:'asset_tracker'};
+
+function connectSupabase(){
+  SB.url=(document.getElementById('cfg-url').value||'').trim().replace(/\/$/,'');
+  SB.key=(document.getElementById('cfg-key').value||'').trim();
+  SB.table=(document.getElementById('cfg-table').value||'asset_tracker').trim();
+  if(!SB.url||!SB.key){showNotif('Please enter both URL and Key.','error');return;}
+  localStorage.setItem('admin_sb_config',JSON.stringify(SB));
+  testConnection(false);
+}
+
+async function testConnection(silent=false){
+  if(!SB.url||!SB.key){if(!silent) showNotif('No connection config set.','error');return;}
+  setConnStatus('checking','Connecting…');
+  try{
+    const r=await fetch(`${SB.url}/rest/v1/${SB.table}?limit=1`,{headers:sbH({'Accept':'application/json'})});
+    if(r.ok||r.status===416){
+      setConnStatus('ok','Connected');
+      document.getElementById('setup-guide').style.display='none';
+      if(!silent) showNotif('Connected to Supabase ✓','success');
+      await pullRegistryFromSupabase();
+      loadClients();
+      loadUsersTable();
+    } else {
+      throw new Error('HTTP '+r.status);
+    }
+  }catch(err){
+    setConnStatus('err','Connection failed');
+    if(!silent) showNotif('Connection failed: '+err.message,'error');
+  }
+}
+
+function setConnStatus(status,msg){
+  const el=document.getElementById('hdr-conn');
+  const dots={ok:'dot-green',err:'dot-red',checking:'dot-amber'};
+  el.className='conn-status '+status;
+  el.innerHTML='<span class="dot '+(dots[status]||'dot-amber')+'"></span>'+msg;
+  const cr=document.getElementById('conn-result');
+  if(cr) cr.textContent=status==='ok'?'✅ Connected':status==='err'?'❌ Failed':'';
+}
+
+function sbH(extra){
+  const h={
+    'apikey':SB.key,
+    'Authorization':'Bearer '+SB.key,
+    'Content-Type':'application/json',
+    'Prefer':'resolution=merge-duplicates',
+  };
+  if(SB.key&&(SB.key.startsWith('sb_publishable_')||SB.key.startsWith('sb_secret_'))) h['sb-publishable-key']=SB.key;
+  return Object.assign(h,extra||{});
+}
+
+async function sbGet(key){
+  const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}&select=key,value,updated_at`,{headers:sbH({'Accept':'application/json'})});
+  if(r.status===406||r.status===416) return null;
+  if(!r.ok) throw new Error('GET '+r.status);
+  const rows=await r.json(); return rows.length?rows[0]:null;
+}
+async function sbSet(key,value){
+  const r=await fetch(`${SB.url}/rest/v1/${SB.table}`,{method:'POST',headers:sbH({'Accept':'application/json'}),body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});
+  if(!r.ok) throw new Error('SET '+r.status);
+}
+async function sbDelete(key){
+  const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}`,{method:'DELETE',headers:sbH({'Accept':'application/json'})});
+  if(!r.ok) throw new Error('DELETE '+r.status);
+}
+
+async function sha256Hex(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function portalPwdHash(clientId,password){
+  return sha256Hex(PORTAL_AUTH_SALT+':'+clientId+':'+password);
+}
+async function authUserPwdHash(slug,password){
+  return sha256Hex(PORTAL_AUTH_SALT+':auth:'+slug+':'+password);
+}
+
+const ADMIN_CLIENTS_KEY='admin_clients_registry';
+let clients=[];
+
+function loadClientsFromLocal(){
+  try{clients=JSON.parse(localStorage.getItem(ADMIN_CLIENTS_KEY))||[];}catch(e){clients=[];}
+}
+function saveClientsLocal(){localStorage.setItem(ADMIN_CLIENTS_KEY,JSON.stringify(clients));}
+
+async function pullRegistryFromSupabase(){
+  if(!SB.url||!SB.key) return;
+  try{
+    const row=await sbGet(REGISTRY_KEY);
+    if(row&&row.value!=null){
+      let v=row.value;
+      if(typeof v==='string'){
+        try{v=JSON.parse(v);}catch(e){v=null;}
+      }
+      if(v&&Array.isArray(v.clients)&&v.clients.length){
+        clients=v.clients.map(x=>({id:String(x.id||'').trim(),name:String(x.name||x.id||'').trim()})).filter(x=>x.id);
+        saveClientsLocal();
+      }
+    }
+  }catch(e){console.warn('Registry pull',e);}
+}
+
+async function pushRegistryToSupabase(){
+  if(!SB.url||!SB.key) return;
+  const payload={clients:clients.map(c=>({id:c.id,name:c.name||c.id}))};
+  await sbSet(REGISTRY_KEY,JSON.stringify(payload));
+}
+
+function renderClientsFromLocal(){
+  loadClientsFromLocal();
+  if(clients.length) renderClientRows(clients.map(c=>({...c,portalUser:'',records:null,lastSync:null})));
+}
+
+function tabRowsFromStored(val){
+  if(!val) return[];
+  try{
+    const d=typeof val==='string'?JSON.parse(val):val;
+    if(d&&Array.isArray(d.rows)) return d.rows;
+  }catch(e){}
+  return[];
+}
+
+async function loadClients(){
+  if(!SB.url||!SB.key){showNotif('Connect to Supabase first.','error');return;}
+  loadClientsFromLocal();
+  const tbody=document.getElementById('clients-tbody');
+  tbody.innerHTML='<tr class="loading-row"><td colspan="7">⏳ Loading client data…</td></tr>';
+
+  const enriched=await Promise.all(clients.map(async c=>{
+    try{
+      const [activeRow,recvRow,retRow,trRow,credRow]=await Promise.all([
+        sbGet(c.id+'_active'),
+        sbGet(c.id+'_received'),
+        sbGet(c.id+'_retired'),
+        sbGet(c.id+'_transfers'),
+        sbGet(c.id+'_portal_creds'),
+      ]);
+      let active=true;
+      if(activeRow) active=activeRow.value==='true'||activeRow.value===true||activeRow.value==='1';
+      const n1=tabRowsFromStored(recvRow&&recvRow.value).length;
+      const n2=tabRowsFromStored(retRow&&retRow.value).length;
+      const n3=tabRowsFromStored(trRow&&trRow.value).length;
+      const ts=[recvRow,retRow,trRow].filter(Boolean).map(r=>new Date(r.updated_at).getTime()).filter(t=>!isNaN(t));
+      const lastSync=ts.length?new Date(Math.max(...ts)).toISOString():null;
+      let portalUser='';
+      if(credRow&&credRow.value){
+        try{
+          const p=typeof credRow.value==='string'?JSON.parse(credRow.value):credRow.value;
+          portalUser=(p&&p.username)?String(p.username):'';
+        }catch(e){}
+      }
+      return{...c,active,records:{tab1:n1,tab2:n2,tab3:n3},lastSync,portalUser};
+    }catch(err){
+      return{...c,active:c.active!==false,records:null,lastSync:null,portalUser:'',error:true};
+    }
+  }));
+
+  enriched.forEach(ec=>{
+    const local=clients.find(x=>x.id===ec.id);
+    if(local) local.active=ec.active;
+  });
+  saveClientsLocal();
+  renderClientRows(enriched);
+}
+
+function renderClientRows(data){
+  const tbody=document.getElementById('clients-tbody');
+  if(!data.length){
+    tbody.innerHTML='<tr><td colspan="7"><div class="empty-clients"><div class="icon">👥</div><p>No clients registered yet. Add your first client above.</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML=data.map((c,idx)=>{
+    const activeChecked=c.active!==false?'checked':'';
+    const statusLabel=c.active!==false?'<span class="status-label active">Active ✓</span>':'<span class="status-label inactive">Inactive ✗</span>';
+    const recHtml=c.records?('<span class="count-badge">✅ '+c.records.tab1+'</span> <span class="count-badge" style="background:var(--red-lt);color:var(--red)">🗃 '+c.records.tab2+'</span> <span class="count-badge" style="background:var(--yellow-lt);color:var(--yellow-dk)">🔄 '+c.records.tab3+'</span>'):(c.error?'<span style="color:var(--text3);font-size:12px">Could not load</span>':'<span style="color:var(--text3);font-size:12px">—</span>');
+    const lastSyncHtml=c.lastSync?'<span class="last-sync">'+fmtDate(c.lastSync)+'</span>':'<span style="color:var(--text3);font-size:12px">No data yet</span>';
+    const portalCell=c.portalUser?('<span class="portal-user">'+esc(c.portalUser)+'</span>'):'<span style="color:var(--text3);font-size:12px">—</span>';
+    const enc=encodeURIComponent(c.id);
+    return'<tr>'+
+      '<td><span class="client-id">'+esc(c.id)+'</span></td>'+
+      '<td style="font-weight:500">'+esc(c.name||c.id)+'</td>'+
+      '<td>'+portalCell+' <button type="button" class="btn btn-secondary btn-sm" onclick="openCredsModal('+JSON.stringify(c.id)+')">Set</button></td>'+
+      '<td><div class="status-toggle"><div class="toggle-wrap">'+
+      '<input type="checkbox" '+activeChecked+' data-client="'+enc+'" onchange="toggleClient(decodeURIComponent(this.dataset.client),this.checked)">'+
+      '<div class="toggle-track"></div><div class="toggle-thumb"></div></div>'+statusLabel+'</div></td>'+
+      '<td>'+recHtml+'</td>'+
+      '<td>'+lastSyncHtml+'</td>'+
+      '<td><div class="actions-cell">'+
+      '<button type="button" class="btn btn-secondary btn-sm" onclick="refreshClient('+JSON.stringify(c.id)+','+idx+')">🔄</button>'+
+      '<button type="button" class="btn btn-danger btn-sm" onclick="removeClient('+JSON.stringify(c.id)+')">Remove</button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+
+function fmtDate(iso){
+  if(!iso) return'—';
+  const d=new Date(iso);
+  return d.toLocaleDateString()+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+}
+
+async function toggleClient(clientId,active){
+  if(!SB.url||!SB.key){showNotif('Not connected to Supabase.','error');return;}
+  const row=[...document.querySelectorAll('input[data-client]')].find(i=>decodeURIComponent(i.dataset.client)===clientId)?.closest('tr');
+  if(row){
+    const lbl=row.querySelector('.status-label');
+    if(lbl){lbl.textContent=active?'Active ✓':'Inactive ✗';lbl.className='status-label '+(active?'active':'inactive');}
+  }
+  try{
+    await sbSet(clientId+'_active', active?'true':'false');
+    const local=clients.find(c=>c.id===clientId);
+    if(local) local.active=active;
+    saveClientsLocal();
+    showNotif(clientId+' — tool '+(active?'✅ ACTIVATED':'🔒 DEACTIVATED'), active?'success':'info');
+  }catch(err){
+    showNotif('Failed to update: '+err.message,'error');
+    const inp=[...document.querySelectorAll('input[data-client]')].find(i=>decodeURIComponent(i.dataset.client)===clientId);
+    if(inp) inp.checked=!active;
+  }
+}
+
+let _credsTargetId='';
+function openCredsModal(clientId){
+  _credsTargetId=clientId;
+  document.getElementById('creds-modal-client').textContent=clientId;
+  document.getElementById('creds-user').value='';
+  document.getElementById('creds-pw1').value='';
+  document.getElementById('creds-pw2').value='';
+  document.getElementById('creds-err').style.display='none';
+  document.getElementById('creds-modal').classList.add('show');
+}
+function closeCredsModal(){
+  document.getElementById('creds-modal').classList.remove('show');
+  _credsTargetId='';
+}
+
+async function savePortalCreds(){
+  const errEl=document.getElementById('creds-err');
+  errEl.style.display='none';
+  const user=(document.getElementById('creds-user').value||'').trim();
+  const p1=document.getElementById('creds-pw1').value;
+  const p2=document.getElementById('creds-pw2').value;
+  if(!_credsTargetId){closeCredsModal();return;}
+  if(!user){
+    errEl.textContent='Enter a username, or use Clear login to disable.';
+    errEl.style.display='block';
+    return;
+  }
+  if(p1.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.style.display='block';return;}
+  if(p1!==p2){errEl.textContent='Passwords do not match.';errEl.style.display='block';return;}
+  if(!SB.url||!SB.key){showNotif('Not connected.','error');return;}
+  try{
+    const passwordHash=await portalPwdHash(_credsTargetId,p1);
+    await sbSet(_credsTargetId+'_portal_creds',JSON.stringify({username:user,passwordHash}));
+    showNotif('Portal login saved for '+_credsTargetId,'success');
+    closeCredsModal();
+    loadClients();
+  }catch(e){
+    errEl.textContent=e.message||String(e);
+    errEl.style.display='block';
+  }
+}
+
+async function clearPortalCreds(){
+  if(!_credsTargetId||!confirm('Remove portal login for '+_credsTargetId+'? Clients will only need the URL.')) return;
+  if(!SB.url||!SB.key) return;
+  try{
+    await sbSet(_credsTargetId+'_portal_creds',JSON.stringify({username:'',passwordHash:''}));
+    showNotif('Portal login cleared.','info');
+    closeCredsModal();
+    loadClients();
+  }catch(e){showNotif(e.message,'error');}
+}
+
+async function addClient(){
+  const idEl=document.getElementById('new-client-id'),nameEl=document.getElementById('new-client-name');
+  const id=(idEl.value||'').trim().replace(/\s+/g,'_');
+  const name=(nameEl.value||'').trim()||id;
+  if(!id){showNotif('Please enter a Client ID.','error');return;}
+  if(clients.find(c=>c.id===id)){showNotif('Client ID "'+id+'" already exists.','error');return;}
+  if(!/^[a-zA-Z0-9_-]+$/.test(id)){showNotif('Client ID: letters, numbers, _ and - only.','error');return;}
+  clients.push({id,name,active:true});
+  saveClientsLocal();
+  idEl.value=''; nameEl.value='';
+  if(SB.url&&SB.key){
+    try{
+      await sbSet(id+'_active','true');
+      await pushRegistryToSupabase();
+      showNotif('Client "'+name+'" added and activated ✅','success');
+    }catch(err){showNotif('Client added locally but Supabase write failed: '+err.message,'error');}
+    loadClients();
+  } else {
+    renderClientsFromLocal();
+    showNotif('Client "'+name+'" added (connect Supabase to sync).','info');
+  }
+}
+
+async function removeClient(clientId){
+  if(!confirm('Remove "'+clientId+'" from the admin list?\n\nData rows in Supabase are not deleted.')) return;
+  clients=clients.filter(c=>c.id!==clientId);
+  saveClientsLocal();
+  if(SB.url&&SB.key){
+    try{await pushRegistryToSupabase();}catch(e){showNotif('Registry sync: '+e.message,'error');}
+  }
+  loadClients();
+  showNotif('"'+clientId+'" removed from admin list.','info');
+}
+
+async function refreshClient(clientId,idx){
+  if(!SB.url||!SB.key){showNotif('Not connected to Supabase.','error');return;}
+  showNotif('Refreshing '+clientId+'…','info');
+  loadClients();
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+let _umEditSlug=null;
+function umToggleClient(){
+  const role=document.getElementById('um-role').value;
+  document.getElementById('um-client-wrap').style.display=role==='client'?'block':'none';
+}
+async function readUsersIndex(){
+  if(!SB.url||!SB.key) return{users:[]};
+  try{
+    const row=await sbGet(AUTH_USERS_INDEX_KEY);
+    if(!row||row.value==null) return{users:[]};
+    let v=row.value;
+    if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v={users:[]};}}
+    if(v&&Array.isArray(v.users)) return{users:v.users};
+  }catch(e){}
+  return{users:[]};
+}
+async function writeUsersIndex(users){
+  await sbSet(AUTH_USERS_INDEX_KEY,JSON.stringify({users}));
+}
+async function loadUsersTable(){
+  const tbody=document.getElementById('users-tbody');
+  if(!SB.url||!SB.key){tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--text3)">Connect to Supabase first.</td></tr>';return;}
+  tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--text3)">Loading…</td></tr>';
+  try{
+    const idx=await readUsersIndex();
+    const list=idx.users||[];
+    if(!list.length){tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--text3)">No app users yet. Add one with <strong>+ Add user</strong>.</td></tr>';return;}
+    tbody.innerHTML=list.map(u=>{
+      const slug=esc(u.slug);
+      const dn=esc(u.displayUsername||u.slug);
+      const role=u.role==='admin'?'Administrator':'Client';
+      const cid=u.role==='client'?esc(u.clientId||'—'):'—';
+      return'<tr><td><code>'+slug+'</code></td><td>'+dn+'</td><td>'+role+'</td><td><code>'+cid+'</code></td><td><div class="actions-cell">'+
+        '<button type="button" class="btn btn-secondary btn-sm" onclick="openUserModal('+JSON.stringify(u.slug)+')">Edit</button>'+
+        '<button type="button" class="btn btn-danger btn-sm" onclick="deleteAppUser('+JSON.stringify(u.slug)+')">Delete</button></div></td></tr>';
+    }).join('');
+  }catch(e){
+    tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--red)">'+esc(e.message)+'</td></tr>';
+  }
+}
+function openUserModal(slug){
+  _umEditSlug=slug||null;
+  document.getElementById('user-modal-title').textContent=slug?'Edit user':'Add user';
+  document.getElementById('um-err').style.display='none';
+  document.getElementById('um-login').value=slug||'';
+  document.getElementById('um-login').readOnly=!!slug;
+  document.getElementById('um-display').value='';
+  document.getElementById('um-role').value='client';
+  document.getElementById('um-client').value='';
+  document.getElementById('um-pw1').value='';
+  document.getElementById('um-pw2').value='';
+  document.getElementById('um-pw1-lbl').textContent=slug?'New password (leave blank to keep)':'Password';
+  umToggleClient();
+  if(slug){
+    readUsersIndex().then(idx=>{
+      const u=(idx.users||[]).find(x=>x.slug===slug);
+      if(u){
+        document.getElementById('um-display').value=u.displayUsername||'';
+        document.getElementById('um-role').value=u.role==='admin'?'admin':'client';
+        document.getElementById('um-client').value=u.clientId||'';
+        umToggleClient();
+      }
+    });
+  }
+  document.getElementById('user-modal').classList.add('show');
+}
+function closeUserModal(){
+  document.getElementById('user-modal').classList.remove('show');
+  _umEditSlug=null;
+}
+async function saveUserModal(){
+  const err=document.getElementById('um-err');
+  err.style.display='none';
+  const loginRaw=(document.getElementById('um-login').value||'').trim();
+  const slug=_umEditSlug||normalizeUserSlug(loginRaw);
+  if(!slug){err.textContent='Invalid login username.';err.style.display='block';return;}
+  const displayUsername=(document.getElementById('um-display').value||'').trim()||slug;
+  const role=document.getElementById('um-role').value;
+  const clientId=(document.getElementById('um-client').value||'').trim();
+  const p1=document.getElementById('um-pw1').value;
+  const p2=document.getElementById('um-pw2').value;
+  if(role==='client'){
+    if(!clientId||!/^[a-zA-Z0-9_-]{1,64}$/.test(clientId)){err.textContent='Enter a valid client ID (URL segment).';err.style.display='block';return;}
+  }
+  if(p1||p2||!_umEditSlug){
+    if((p1||p2)&&p1!==p2){err.textContent='Passwords do not match.';err.style.display='block';return;}
+    if(!_umEditSlug&&(!p1||p1.length<6)){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}
+  }
+  if(!SB.url||!SB.key){showNotif('Not connected.','error');return;}
+  try{
+    let passwordHash=null;
+    if(p1){
+      passwordHash=await authUserPwdHash(slug,p1);
+    }else if(_umEditSlug){
+      const old=await sbGet('_auth_user_'+slug);
+      if(old&&old.value!=null){
+        const j=typeof old.value==='string'?JSON.parse(old.value):old.value;
+        passwordHash=j.passwordHash;
+      }
+    }
+    if(!passwordHash){err.textContent='Password required for new users.';err.style.display='block';return;}
+    const payload={displayUsername,passwordHash,role,clientId:role==='admin'?'':clientId};
+    await sbSet('_auth_user_'+slug,JSON.stringify(payload));
+    let idx=await readUsersIndex();
+    let users=(idx.users||[]).filter(x=>x.slug!==slug);
+    users.push({slug,displayUsername,role,clientId:role==='admin'?null:clientId});
+    await writeUsersIndex(users);
+    showNotif('User saved','success');
+    closeUserModal();
+    loadUsersTable();
+  }catch(e){
+    err.textContent=e.message||String(e);
+    err.style.display='block';
+  }
+}
+async function deleteAppUser(slug){
+  if(!slug||!confirm('Delete user "'+slug+'"? They will no longer be able to sign in.')) return;
+  if(!SB.url||!SB.key) return;
+  try{
+    await sbDelete('_auth_user_'+slug);
+    const idx=await readUsersIndex();
+    const users=(idx.users||[]).filter(x=>x.slug!==slug);
+    await writeUsersIndex(users);
+    showNotif('User deleted','info');
+    loadUsersTable();
+  }catch(e){showNotif(e.message,'error');}
+}
+
+let _notifTimer;
+function showNotif(msg,type='success'){
+  const el=document.getElementById('notif');
+  const icons={success:'✅',error:'❌',info:'ℹ️',warning:'⚠️'};
+  el.innerHTML=(icons[type]||'ℹ️')+' '+msg;
+  el.className='notif '+type+' show';
+  clearTimeout(_notifTimer);
+  _notifTimer=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+(function adminGate(){
+  let s=null;
+  try{s=JSON.parse(sessionStorage.getItem(APP_SESSION_KEY)||'null');}catch(e){}
+  if(!s||s.role!=='admin'){
+    location.replace('/?next='+encodeURIComponent('/admin'));
+    return;
+  }
+  document.getElementById('app').style.display='block';
+  loadSavedConfig();
+})();
+</script>
+</body>
+</html>
