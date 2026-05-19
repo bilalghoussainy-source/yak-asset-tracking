@@ -296,7 +296,7 @@ tbody tr.conflict-row{background:#fff5f5}
     <h2>Asset Tracking</h2>
     <p class="login-sub">Login to continue</p>
     <div class="portal-err" id="root-auth-err"></div>
-    <div class="field"><label>Username</label><input type="text" id="root-auth-user" autocomplete="username" placeholder="Username" onkeydown="if(event.key==='Enter')submitRootLogin()"></div>
+    <div class="field"><label>Login username</label><input type="text" id="root-auth-user" autocomplete="username" placeholder="From Admin App users Login column" onkeydown="if(event.key==='Enter')submitRootLogin()"></div>
     <div class="field"><label>Password</label><input type="password" id="root-auth-pw" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')submitRootLogin()"></div>
     <button type="button" class="btn-login" onclick="submitRootLogin()">Login</button>
   </div>
@@ -696,6 +696,14 @@ const APP_SESSION_KEY='app_session';
 function normalizeUserSlug(u){
   const s=String(u||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_-]/g,'');
   return s;
+}
+function parseAuthUserValue(val){
+  if(val==null) return null;
+  let j=val;
+  for(let i=0;i<2&&typeof j==='string';i++){
+    try{j=JSON.parse(j);}catch(e){return null;}
+  }
+  return j&&typeof j==='object'?j:null;
 }
 function readAppSession(){
   try{return JSON.parse(sessionStorage.getItem(APP_SESSION_KEY)||'null');}catch(e){return null;}
@@ -1366,7 +1374,8 @@ async function submitRootLogin(){
     if(!USE_SUPABASE){errEl.textContent='Server not configured.';errEl.classList.add('show');return;}
     const row=await sbGetGlobal('_auth_user_'+slug);
     if(!row||row.value==null){errEl.textContent='Unknown user. Create this account in Admin → App users, or sign in as '+bootUser+' (bootstrap).';errEl.classList.add('show');return;}
-    const j=typeof row.value==='string'?JSON.parse(row.value):row.value;
+    const j=parseAuthUserValue(row.value);
+    if(!j){errEl.textContent='Account data is invalid. In Admin, edit this user and set a new password.';errEl.classList.add('show');return;}
     const role=String(j.role||'');
     const clientId=j.clientId!=null?String(j.clientId).trim():'';
     const displayUsername=String(j.displayUsername||u).trim();
@@ -1374,7 +1383,8 @@ async function submitRootLogin(){
     if(!expectedHash||(role!=='admin'&&role!=='client')){errEl.textContent='Invalid username or password.';errEl.classList.add('show');return;}
     const h=await authUserPwdHash(slug,p);
     if(h!==expectedHash){
-      errEl.textContent='Invalid password. If this account was created locally or before deploy, set PORTAL_AUTH_SALT to the same value on Vercel as when the user was created, redeploy, or open Admin → App users, edit this user, and set a new password.';
+      const tried=u!==slug?' (login username is stored as "'+slug+'")':'';
+      errEl.textContent='Wrong password for login username "'+slug+'"'+tried+'. Use the Login column from Admin (not display name), and the exact password you entered when saving the user. Or open Admin, edit this user, and set a new password.';
       errEl.classList.add('show');
       return;
     }

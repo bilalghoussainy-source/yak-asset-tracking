@@ -299,20 +299,40 @@ const PORTAL_AUTH_SALT='__PORTAL_AUTH_SALT__';
 const REGISTRY_KEY='_admin_clients_registry';
 const AUTH_USERS_INDEX_KEY='_auth_users_index';
 const APP_SESSION_KEY='app_session';
+const BUILT_SB={
+  url:('__SUPABASE_URL__'||'').trim().replace(/\/$/,''),
+  key:('__SUPABASE_ANON_KEY__'||'').trim(),
+  table:('__SUPABASE_TABLE__'||'asset_tracker').trim(),
+};
+const HAS_BUILT_SB=Boolean(BUILT_SB.url&&BUILT_SB.key&&BUILT_SB.table&&!BUILT_SB.url.includes('__SUPABASE'));
 
 function normalizeUserSlug(u){
   return String(u||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_-]/g,'');
 }
+function parseAuthUserValue(val){
+  if(val==null) return null;
+  let j=val;
+  for(let i=0;i<2&&typeof j==='string';i++){
+    try{j=JSON.parse(j);}catch(e){return null;}
+  }
+  return j&&typeof j==='object'?j:null;
+}
+function ensureDeploySupabase(){
+  if(!HAS_BUILT_SB) return;
+  SB.url=BUILT_SB.url;
+  SB.key=BUILT_SB.key;
+  SB.table=BUILT_SB.table;
+  const u=document.getElementById('cfg-url');
+  const k=document.getElementById('cfg-key');
+  const t=document.getElementById('cfg-table');
+  if(u) u.value=SB.url;
+  if(k) k.value=SB.key;
+  if(t) t.value=SB.table;
+}
 
 function loadSavedConfig(){
-  const builtUrl='__SUPABASE_URL__';
-  const builtKey='__SUPABASE_ANON_KEY__';
-  const builtTable='__SUPABASE_TABLE__';
-  const hasBuilt=builtUrl&&builtKey&&builtTable&&!builtUrl.includes('__SUPABASE');
-  if(hasBuilt){
-    SB.url=builtUrl.trim().replace(/\/$/,'');
-    SB.key=builtKey.trim();
-    SB.table=(builtTable||'asset_tracker').trim();
+  if(HAS_BUILT_SB){
+    ensureDeploySupabase();
     document.getElementById('cfg-url').value=SB.url;
     document.getElementById('cfg-key').value=SB.key;
     document.getElementById('cfg-table').value=SB.table;
@@ -337,7 +357,7 @@ function loadSavedConfig(){
       }catch(e){}
     }
   }
-  if(!hasBuilt) loadRegistryThenRender();
+  if(!HAS_BUILT_SB) loadRegistryThenRender();
 }
 
 async function loadRegistryThenRender(){
@@ -353,6 +373,12 @@ function doLogout(){
 let SB={url:'',key:'',table:'asset_tracker'};
 
 function connectSupabase(){
+  if(HAS_BUILT_SB){
+    ensureDeploySupabase();
+    testConnection(false);
+    showNotif('Using Supabase from Vercel deploy (same database as login page).','info');
+    return;
+  }
   SB.url=(document.getElementById('cfg-url').value||'').trim().replace(/\/$/,'');
   SB.key=(document.getElementById('cfg-key').value||'').trim();
   SB.table=(document.getElementById('cfg-table').value||'asset_tracker').trim();
@@ -429,6 +455,7 @@ async function sbDelete(key){
   if(!rows.length) throw new Error('DELETE: no row removed for key "'+key+'"');
 }
 function requireSb(actionLabel){
+  ensureDeploySupabase();
   if(SB.url&&SB.key) return true;
   showNotif('Not connected to Supabase — use Connect & Save or check Vercel env vars. ('+actionLabel+')','error');
   return false;
@@ -789,10 +816,8 @@ async function saveUserModal(){
       passwordHash=await authUserPwdHash(slug,p1);
     }else if(_umEditSlug){
       const old=await sbGet('_auth_user_'+slug);
-      if(old&&old.value!=null){
-        const j=typeof old.value==='string'?JSON.parse(old.value):old.value;
-        passwordHash=j.passwordHash;
-      }
+      const j=old?parseAuthUserValue(old.value):null;
+      if(j) passwordHash=j.passwordHash;
     }
     if(!passwordHash){
       err.textContent=_umEditSlug?'Could not load saved password — enter a new password and save again.':'Password required for new users.';
@@ -801,11 +826,16 @@ async function saveUserModal(){
     }
     const payload={displayUsername,passwordHash,role,clientId:role==='admin'?'':clientId};
     await sbSet('_auth_user_'+slug,JSON.stringify(payload));
+    const verify=await sbGet('_auth_user_'+slug);
+    const vj=verify?parseAuthUserValue(verify.value):null;
+    if(!vj||String(vj.passwordHash||'')!==String(passwordHash)){
+      throw new Error('Password did not save correctly in Supabase. Try again.');
+    }
     let idx=await readUsersIndex();
     let users=(idx.users||[]).filter(x=>x.slug!==slug);
     users.push({slug,displayUsername,role,clientId:role==='admin'?null:clientId});
     await writeUsersIndex(users);
-    showNotif(p1?'User saved. Password updated for this environment.':'User saved','success');
+    showNotif('User saved. Sign in at / with login username: '+slug+(p1?' and the password you just set.':' (password unchanged).'),'success');
     closeUserModal();
     loadUsersTable();
   }catch(e){
