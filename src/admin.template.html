@@ -419,8 +419,18 @@ async function sbSet(key,value){
   if(!r.ok) throw await sbErr('SET',r);
 }
 async function sbDelete(key){
-  const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}`,{method:'DELETE',headers:sbH({'Accept':'application/json'})});
+  const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}`,{
+    method:'DELETE',
+    headers:sbH({'Accept':'application/json','Prefer':'return=representation'}),
+  });
   if(!r.ok) throw await sbErr('DELETE',r);
+  const rows=await r.json().catch(()=>[]);
+  if(!rows.length) throw new Error('DELETE: no row removed for key "'+key+'"');
+}
+function requireSb(actionLabel){
+  if(SB.url&&SB.key) return true;
+  showNotif('Not connected to Supabase — use Connect & Save or check Vercel env vars. ('+actionLabel+')','error');
+  return false;
 }
 
 async function sha256Hex(str){
@@ -538,15 +548,15 @@ function renderClientRows(data){
     return'<tr>'+
       '<td><span class="client-id">'+esc(c.id)+'</span></td>'+
       '<td style="font-weight:500">'+esc(c.name||c.id)+'</td>'+
-      '<td>'+portalCell+' <button type="button" class="btn btn-secondary btn-sm" onclick="openCredsModal('+JSON.stringify(c.id)+')">Set</button></td>'+
+      '<td>'+portalCell+' <button type="button" class="btn btn-secondary btn-sm" data-action="creds" data-client-id="'+esc(c.id)+'">Set</button></td>'+
       '<td><div class="status-toggle"><div class="toggle-wrap">'+
-      '<input type="checkbox" '+activeChecked+' data-client="'+enc+'" onchange="toggleClient(decodeURIComponent(this.dataset.client),this.checked)">'+
+      '<input type="checkbox" '+activeChecked+' data-client="'+enc+'" >'+
       '<div class="toggle-track"></div><div class="toggle-thumb"></div></div>'+statusLabel+'</div></td>'+
       '<td>'+recHtml+'</td>'+
       '<td>'+lastSyncHtml+'</td>'+
       '<td><div class="actions-cell">'+
-      '<button type="button" class="btn btn-secondary btn-sm" onclick="refreshClient('+JSON.stringify(c.id)+','+idx+')">🔄</button>'+
-      '<button type="button" class="btn btn-danger btn-sm" onclick="removeClient('+JSON.stringify(c.id)+')">Remove</button>'+
+      '<button type="button" class="btn btn-secondary btn-sm" data-action="refresh-client" data-client-id="'+esc(c.id)+'">🔄</button>'+
+      '<button type="button" class="btn btn-danger btn-sm" data-action="remove-client" data-client-id="'+esc(c.id)+'">Remove</button>'+
       '</div></td></tr>';
   }).join('');
 }
@@ -655,6 +665,7 @@ async function addClient(){
 
 async function removeClient(clientId){
   if(!confirm('Remove "'+clientId+'" from the admin list?\n\nData rows in Supabase are not deleted.')) return;
+  if(!requireSb('remove client')) return;
   const prev=clients.slice();
   clients=clients.filter(c=>c.id!==clientId);
   saveClientsLocal();
@@ -710,12 +721,13 @@ async function loadUsersTable(){
     if(!list.length){tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--text3)">No app users yet. Add one with <strong>+ Add user</strong>.</td></tr>';return;}
     tbody.innerHTML=list.map(u=>{
       const slug=esc(u.slug);
+      const slugRaw=esc(u.slug);
       const dn=esc(u.displayUsername||u.slug);
       const role=u.role==='admin'?'Administrator':'Client';
       const cid=u.role==='client'?esc(u.clientId||'—'):'—';
       return'<tr><td><code>'+slug+'</code></td><td>'+dn+'</td><td>'+role+'</td><td><code>'+cid+'</code></td><td><div class="actions-cell">'+
-        '<button type="button" class="btn btn-secondary btn-sm" onclick="openUserModal('+JSON.stringify(u.slug)+')">Edit</button>'+
-        '<button type="button" class="btn btn-danger btn-sm" onclick="deleteAppUser('+JSON.stringify(u.slug)+')">Delete</button></div></td></tr>';
+        '<button type="button" class="btn btn-secondary btn-sm" data-action="edit-user" data-slug="'+slugRaw+'">Edit</button>'+
+        '<button type="button" class="btn btn-danger btn-sm" data-action="delete-user" data-slug="'+slugRaw+'">Delete</button></div></td></tr>';
     }).join('');
   }catch(e){
     tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--red)">'+esc(e.message)+'</td></tr>';
@@ -769,7 +781,7 @@ async function saveUserModal(){
     if((p1||p2)&&p1!==p2){err.textContent='Passwords do not match.';err.style.display='block';return;}
     if(!_umEditSlug&&(!p1||p1.length<6)){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}
   }
-  if(!SB.url||!SB.key){showNotif('Not connected.','error');return;}
+  if(!requireSb('save user')) return;
   try{
     let passwordHash=null;
     if(p1){
@@ -781,7 +793,11 @@ async function saveUserModal(){
         passwordHash=j.passwordHash;
       }
     }
-    if(!passwordHash){err.textContent='Password required for new users.';err.style.display='block';return;}
+    if(!passwordHash){
+      err.textContent=_umEditSlug?'Could not load saved password — enter a new password and save again.':'Password required for new users.';
+      err.style.display='block';
+      return;
+    }
     const payload={displayUsername,passwordHash,role,clientId:role==='admin'?'':clientId};
     await sbSet('_auth_user_'+slug,JSON.stringify(payload));
     let idx=await readUsersIndex();
@@ -798,7 +814,7 @@ async function saveUserModal(){
 }
 async function deleteAppUser(slug){
   if(!slug||!confirm('Delete user "'+slug+'"? They will no longer be able to sign in.')) return;
-  if(!SB.url||!SB.key) return;
+  if(!requireSb('delete user')) return;
   try{
     await sbDelete('_auth_user_'+slug);
     const idx=await readUsersIndex();
@@ -819,6 +835,41 @@ function showNotif(msg,type='success'){
   _notifTimer=setTimeout(()=>el.classList.remove('show'),3500);
 }
 
+let _adminActionsBound=false;
+function initAdminActions(){
+  if(_adminActionsBound) return;
+  _adminActionsBound=true;
+  const usersTbody=document.getElementById('users-tbody');
+  const clientsTbody=document.getElementById('clients-tbody');
+  usersTbody.addEventListener('click',(e)=>{
+    const btn=e.target.closest('button[data-action]');
+    if(!btn) return;
+    const slug=btn.getAttribute('data-slug');
+    if(btn.dataset.action==='edit-user'&&slug) openUserModal(slug);
+    if(btn.dataset.action==='delete-user'&&slug) deleteAppUser(slug);
+  });
+  clientsTbody.addEventListener('click',(e)=>{
+    const btn=e.target.closest('button[data-action]');
+    if(btn){
+      const id=btn.getAttribute('data-client-id');
+      if(btn.dataset.action==='remove-client'&&id) removeClient(id);
+      if(btn.dataset.action==='refresh-client'&&id) refreshClient(id,0);
+      if(btn.dataset.action==='creds'&&id) openCredsModal(id);
+      return;
+    }
+  });
+  clientsTbody.addEventListener('change',(e)=>{
+    const inp=e.target.closest('input[data-client]');
+    if(!inp) return;
+    toggleClient(decodeURIComponent(inp.dataset.client),inp.checked);
+  });
+  window.openUserModal=openUserModal;
+  window.deleteAppUser=deleteAppUser;
+  window.removeClient=removeClient;
+  window.saveUserModal=saveUserModal;
+  window.openCredsModal=openCredsModal;
+}
+
 (function adminGate(){
   let s=null;
   try{s=JSON.parse(sessionStorage.getItem(APP_SESSION_KEY)||'null');}catch(e){}
@@ -827,6 +878,7 @@ function showNotif(msg,type='success'){
     return;
   }
   document.getElementById('app').style.display='block';
+  initAdminActions();
   loadSavedConfig();
 })();
 </script>
