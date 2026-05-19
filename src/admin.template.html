@@ -424,6 +424,7 @@ async function sbDelete(key){
     headers:sbH({'Accept':'application/json','Prefer':'return=representation'}),
   });
   if(!r.ok) throw await sbErr('DELETE',r);
+  if(r.status===204) return;
   const rows=await r.json().catch(()=>[]);
   if(!rows.length) throw new Error('DELETE: no row removed for key "'+key+'"');
 }
