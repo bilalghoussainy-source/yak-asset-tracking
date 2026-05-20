@@ -91,6 +91,8 @@ header{background:#fff;border-bottom:3px solid var(--yellow);padding:0 28px;heig
 /* MAIN */
 .main{padding:22px 28px;max-width:1800px;margin:0 auto}
 .tab-pane{display:none}.tab-pane.active{display:block}
+/* Hide tab bar until per-user tab access is applied (avoids flash of all tabs while syncing) */
+body:not(.tabs-access-ready) .tab-bar{visibility:hidden}
 
 /* DASHBOARD */
 .dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
@@ -395,6 +397,49 @@ tbody tr.conflict-row{background:#fff5f5}
   <button class="tab-btn" data-tab-id="tab4" onclick="switchTab('tab4',this)">📋 Audit Log <span class="tab-count" id="count4">0</span></button>
   <button class="tab-btn" data-tab-id="tab5" onclick="switchTab('tab5',this)">⚡ Resolve Conflicts <span class="tab-count" id="count5" style="background:var(--red-lt);color:var(--red)">0</span></button>
 </div>
+<script>
+/* Apply tab access from session before first paint (same rules as applyTabAccess) */
+(function(){
+  function pathClientId(){
+    var reserved={api:1,_vercel:1,'favicon.ico':1,'robots.txt':1,assets:1,admin:1};
+    var seg=(location.pathname.split('/').filter(Boolean)[0]||'').trim();
+    if(!seg||reserved[seg.toLowerCase()]) return '';
+    if(!/^[a-zA-Z0-9_-]{1,64}$/.test(seg)) return '';
+    return seg;
+  }
+  function tabOk(tabs,id){
+    return !tabs||typeof tabs!=='object'||typeof tabs[id]!=='boolean'||tabs[id];
+  }
+  function markReady(){document.body.classList.add('tabs-access-ready');}
+  try{
+    var cid=pathClientId();
+    if(!cid){markReady();return;}
+    var s=JSON.parse(sessionStorage.getItem('app_session')||'null');
+    if(!s||s.role!=='client'||String(s.clientId||'').toLowerCase()!==cid.toLowerCase()){markReady();return;}
+    var tabs=s.tabs;
+    var ids=['tab0','tab1','tab2','tab3','tab4','tab5'];
+    ids.forEach(function(id){
+      var btn=document.querySelector('.tab-btn[data-tab-id="'+id+'"]');
+      if(btn) btn.style.display=tabOk(tabs,id)?'':'none';
+    });
+    document.querySelectorAll('[data-goto-tab]').forEach(function(el){
+      var tid=el.getAttribute('data-goto-tab');
+      if(tid) el.style.display=tabOk(tabs,tid)?'':'none';
+    });
+    var first=ids.find(function(id){return tabOk(tabs,id);})||'tab0';
+    var active=document.querySelector('.tab-pane.active');
+    if(active&&(!active.id||!tabOk(tabs,active.id))){
+      document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});
+      document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+      var pane=document.getElementById(first);
+      var btn=document.querySelector('.tab-btn[data-tab-id="'+first+'"]');
+      if(pane) pane.classList.add('active');
+      if(btn) btn.classList.add('active');
+    }
+    markReady();
+  }catch(e){markReady();}
+})();
+</script>
 
 <div class="main">
 
@@ -867,7 +912,11 @@ async function refreshUserTabAccessFromServer(sess){
   return sess;
 }
 function applyTabAccess(tabs){
-  if(CLIENT_ID==='default'){_activeTabAccess={...DEFAULT_TAB_ACCESS};return;}
+  if(CLIENT_ID==='default'){
+    _activeTabAccess={...DEFAULT_TAB_ACCESS};
+    document.body.classList.add('tabs-access-ready');
+    return;
+  }
   const sess=readAppSession();
   _activeTabAccess=normalizeTabAccess(tabs||(sess&&sess.tabs)||DEFAULT_TAB_ACCESS);
   CLIENT_TAB_IDS.forEach(id=>{
@@ -885,6 +934,7 @@ function applyTabAccess(tabs){
     const btn=document.querySelector('.tab-btn[data-tab-id="'+first+'"]');
     if(btn) switchTab(first,btn);
   }
+  document.body.classList.add('tabs-access-ready');
 }
 
 function normalizeUserSlug(u){
@@ -1842,6 +1892,7 @@ async function init(){
       location.replace('/?next='+next);
       return;
     }
+    applyTabAccess(sess.tabs);
   }
 
   const lbl=document.getElementById('client-label');
@@ -1901,7 +1952,10 @@ async function init(){
 
   if(CLIENT_ID!=='default'){
     const sess=readAppSession();
-    if(sess&&sess.role==='client') await refreshUserTabAccessFromServer(sess);
+    if(sess&&sess.role==='client'){
+      await refreshUserTabAccessFromServer(sess);
+      applyTabAccess(readAppSession()?.tabs);
+    }
   }
   finishInitUI();
 }
