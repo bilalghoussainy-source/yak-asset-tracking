@@ -1933,15 +1933,15 @@ function resolveRetired(recvIdx,retIdx){
 }
 // ══════════════════════════════════════════════════════════════
 //  QR / BARCODE SCANNER
-//  Strategy 1: Native BarcodeDetector — Chrome/Edge
-//  Strategy 2: ZXing — Safari, iOS, Firefox, others
+//  Strategy 1: Native BarcodeDetector (Chrome/Edge) — fastest
+//  Strategy 2: ZXing decodeFromConstraints (Safari/iOS/Firefox) — universal
 // ══════════════════════════════════════════════════════════════
 let _scanTargetId=null;
 let _scanStream=null;
 let _scanInterval=null;
 let _barcodeDetector=null;
 let _zxingReader=null;
-let _useZxing=false;
+let _scanDone=false;
 
 async function openScanner(targetFieldId){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -1950,84 +1950,64 @@ async function openScanner(targetFieldId){
   }
   closeScanner();
   _scanTargetId=targetFieldId;
+  _scanDone=false;
   document.getElementById('scanner-result').textContent='';
   document.getElementById('scannerModal').classList.add('show');
-  _useZxing=!('BarcodeDetector' in window);
+  const useNative=('BarcodeDetector' in window);
   try{
-    _scanStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
-    });
-    const video=document.getElementById('scanner-video');
-    video.srcObject=_scanStream;
-    await video.play().catch(()=>{});
-    if(!_useZxing){
-      _barcodeDetector=new BarcodeDetector({
-        formats:['code_128','code_39','code_93','ean_13','ean_8','upc_a','upc_e','qr_code','data_matrix','pdf417','aztec','itf']
-      });
-      _scanInterval=setInterval(async()=>{
-        if(!video||video.readyState<2) return;
-        try{
-          const barcodes=await _barcodeDetector.detect(video);
-          if(barcodes.length>0){
-            const value=barcodes[0].rawValue;
-            document.getElementById('scanner-result').textContent='✅ Scanned: '+value;
-            setTimeout(()=>completeScan(value),350);
-          }
-        }catch(e){}
-      },300);
-    }else{
-      if(typeof ZXing!=='undefined') _startZxingScan(video);
-      else _startCanvasScan(video);
-    }
+    if(useNative) await _startNativeScan();
+    else await _startZxingScan();
   }catch(err){
     closeScanner();
-    if(err.name==='NotAllowedError') showNotif('Camera permission denied — allow camera access in your browser settings.','error');
+    if(err.name==='NotAllowedError') showNotif('Camera permission denied — allow camera access and try again.','error');
     else showNotif('Camera error: '+err.message,'error');
   }
 }
 
-function _startZxingScan(video){
-  try{
-    const hints=new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
-      ZXing.BarcodeFormat.QR_CODE,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.DATA_MATRIX,ZXing.BarcodeFormat.PDF_417,
-    ]);
-    _zxingReader=new ZXing.BrowserMultiFormatReader(hints);
-    _zxingReader.decodeFromVideoElement(video,(result,err)=>{
-      if(result){
-        document.getElementById('scanner-result').textContent='✅ Scanned: '+result.getText();
-        setTimeout(()=>completeScan(result.getText()),350);
+async function _startNativeScan(){
+  _barcodeDetector=new BarcodeDetector({
+    formats:['code_128','code_39','code_93','ean_13','ean_8','upc_a','upc_e','qr_code','data_matrix','pdf417','aztec','itf']
+  });
+  _scanStream=await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
+  });
+  const video=document.getElementById('scanner-video');
+  video.srcObject=_scanStream;
+  await video.play();
+  _scanInterval=setInterval(async()=>{
+    if(_scanDone||video.readyState<2) return;
+    try{
+      const barcodes=await _barcodeDetector.detect(video);
+      if(barcodes.length>0&&!_scanDone){
+        _scanDone=true;
+        const val=barcodes[0].rawValue;
+        document.getElementById('scanner-result').textContent='✅ Scanned: '+val;
+        setTimeout(()=>completeScan(val),400);
       }
-    });
-  }catch(e){console.warn('ZXing init error:',e);}
+    }catch(e){}
+  },250);
 }
 
-function _startCanvasScan(video){
-  const canvas=document.getElementById('scanner-canvas');
-  const ctx=canvas.getContext('2d');
-  let decoded=false;
-  let busy=false;
-  _scanInterval=setInterval(()=>{
-    if(decoded||busy||!video||video.readyState<2) return;
-    if(typeof ZXing==='undefined') return;
-    canvas.width=video.videoWidth||640;
-    canvas.height=video.videoHeight||480;
-    ctx.drawImage(video,0,0,canvas.width,canvas.height);
-    if(!_zxingReader) _zxingReader=new ZXing.BrowserMultiFormatReader();
-    busy=true;
-    _zxingReader.decodeFromImageElement(canvas)
-      .then(result=>{
-        busy=false;
-        if(result&&!decoded){
-          decoded=true;
-          document.getElementById('scanner-result').textContent='✅ Scanned: '+result.getText();
-          setTimeout(()=>completeScan(result.getText()),350);
-        }
-      })
-      .catch(()=>{busy=false;});
-  },400);
+async function _startZxingScan(){
+  let waited=0;
+  while(typeof ZXing==='undefined'&&waited<5000){
+    await new Promise(r=>setTimeout(r,200));
+    waited+=200;
+  }
+  if(typeof ZXing==='undefined') throw new Error('Scanner library failed to load. Check your internet connection.');
+  _zxingReader=new ZXing.BrowserMultiFormatReader();
+  await _zxingReader.decodeFromConstraints(
+    {video:{facingMode:'environment'}},
+    'scanner-video',
+    (result,err)=>{
+      if(result&&!_scanDone){
+        _scanDone=true;
+        const val=result.getText();
+        document.getElementById('scanner-result').textContent='✅ Scanned: '+val;
+        setTimeout(()=>completeScan(val),400);
+      }
+    }
+  );
 }
 
 function completeScan(value){
@@ -2044,6 +2024,7 @@ function completeScan(value){
 }
 
 function closeScanner(){
+  _scanDone=true;
   document.getElementById('scannerModal')?.classList.remove('show');
   clearInterval(_scanInterval);
   _scanInterval=null;
@@ -2056,7 +2037,10 @@ function closeScanner(){
     _scanStream=null;
   }
   const video=document.getElementById('scanner-video');
-  if(video) video.srcObject=null;
+  if(video){
+    video.srcObject=null;
+    try{video.pause();}catch(e){}
+  }
   _barcodeDetector=null;
 }
 function checkTagConflict(inputId,currentTab){
