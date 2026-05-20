@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Asset Tracking</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 :root{
@@ -742,6 +743,7 @@ tbody tr.conflict-row{background:#fff5f5}
   <div class="scanner-label">Point camera at barcode or QR code</div>
   <div class="scanner-inner">
     <video id="scanner-video" autoplay playsinline muted></video>
+    <canvas id="scanner-canvas" style="display:none"></canvas>
     <div class="scanner-overlay"><div class="scanner-frame"></div></div>
   </div>
   <div class="scanner-result" id="scanner-result">&nbsp;</div>
@@ -1929,38 +1931,105 @@ function resolveRetired(recvIdx,retIdx){
   renderConflictResolver();refreshDashboard();
   showNotif('🗃️ Asset confirmed as retired — received record removed.','info');
 }
-let _scanTargetId=null,_scanStream=null,_scanInterval=null,_barcodeDetector=null;
+// ══════════════════════════════════════════════════════════════
+//  QR / BARCODE SCANNER
+//  Strategy 1: Native BarcodeDetector — Chrome/Edge
+//  Strategy 2: ZXing — Safari, iOS, Firefox, others
+// ══════════════════════════════════════════════════════════════
+let _scanTargetId=null;
+let _scanStream=null;
+let _scanInterval=null;
+let _barcodeDetector=null;
+let _zxingReader=null;
+let _useZxing=false;
+
 async function openScanner(targetFieldId){
-  if(!('BarcodeDetector' in window)){
-    showNotif('Camera scanning is not supported on this browser — type the Tag ID manually.','info');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    showNotif('Camera is not available on this device — type the Tag ID manually.','info');
     return;
   }
   closeScanner();
   _scanTargetId=targetFieldId;
   document.getElementById('scanner-result').textContent='';
   document.getElementById('scannerModal').classList.add('show');
+  _useZxing=!('BarcodeDetector' in window);
   try{
-    _barcodeDetector=new BarcodeDetector({formats:['code_128','code_39','code_93','ean_13','ean_8','upc_a','upc_e','qr_code','data_matrix','pdf417','aztec','itf']});
-    _scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});
-    document.getElementById('scanner-video').srcObject=_scanStream;
-    _scanInterval=setInterval(async()=>{
-      const video=document.getElementById('scanner-video');
-      if(!video||video.readyState<2) return;
-      try{
-        const barcodes=await _barcodeDetector.detect(video);
-        if(barcodes.length>0){
-          const value=barcodes[0].rawValue;
-          document.getElementById('scanner-result').textContent='✅ Scanned: '+value;
-          setTimeout(()=>completeScan(value),400);
-        }
-      }catch(e){}
-    },300);
+    _scanStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
+    });
+    const video=document.getElementById('scanner-video');
+    video.srcObject=_scanStream;
+    await video.play().catch(()=>{});
+    if(!_useZxing){
+      _barcodeDetector=new BarcodeDetector({
+        formats:['code_128','code_39','code_93','ean_13','ean_8','upc_a','upc_e','qr_code','data_matrix','pdf417','aztec','itf']
+      });
+      _scanInterval=setInterval(async()=>{
+        if(!video||video.readyState<2) return;
+        try{
+          const barcodes=await _barcodeDetector.detect(video);
+          if(barcodes.length>0){
+            const value=barcodes[0].rawValue;
+            document.getElementById('scanner-result').textContent='✅ Scanned: '+value;
+            setTimeout(()=>completeScan(value),350);
+          }
+        }catch(e){}
+      },300);
+    }else{
+      if(typeof ZXing!=='undefined') _startZxingScan(video);
+      else _startCanvasScan(video);
+    }
   }catch(err){
     closeScanner();
-    if(err.name==='NotAllowedError') showNotif('Camera permission denied — allow camera access and try again.','error');
+    if(err.name==='NotAllowedError') showNotif('Camera permission denied — allow camera access in your browser settings.','error');
     else showNotif('Camera error: '+err.message,'error');
   }
 }
+
+function _startZxingScan(video){
+  try{
+    const hints=new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
+      ZXing.BarcodeFormat.QR_CODE,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.DATA_MATRIX,ZXing.BarcodeFormat.PDF_417,
+    ]);
+    _zxingReader=new ZXing.BrowserMultiFormatReader(hints);
+    _zxingReader.decodeFromVideoElement(video,(result,err)=>{
+      if(result){
+        document.getElementById('scanner-result').textContent='✅ Scanned: '+result.getText();
+        setTimeout(()=>completeScan(result.getText()),350);
+      }
+    });
+  }catch(e){console.warn('ZXing init error:',e);}
+}
+
+function _startCanvasScan(video){
+  const canvas=document.getElementById('scanner-canvas');
+  const ctx=canvas.getContext('2d');
+  let decoded=false;
+  let busy=false;
+  _scanInterval=setInterval(()=>{
+    if(decoded||busy||!video||video.readyState<2) return;
+    if(typeof ZXing==='undefined') return;
+    canvas.width=video.videoWidth||640;
+    canvas.height=video.videoHeight||480;
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    if(!_zxingReader) _zxingReader=new ZXing.BrowserMultiFormatReader();
+    busy=true;
+    _zxingReader.decodeFromImageElement(canvas)
+      .then(result=>{
+        busy=false;
+        if(result&&!decoded){
+          decoded=true;
+          document.getElementById('scanner-result').textContent='✅ Scanned: '+result.getText();
+          setTimeout(()=>completeScan(result.getText()),350);
+        }
+      })
+      .catch(()=>{busy=false;});
+  },400);
+}
+
 function completeScan(value){
   closeScanner();
   if(!_scanTargetId) return;
@@ -1969,16 +2038,26 @@ function completeScan(value){
     el.value=value;
     el.dispatchEvent(new Event('input',{bubbles:true}));
     el.focus();
-    showNotif('Scanned: '+value,'success');
+    showNotif('📷 Scanned: '+value,'success');
   }
   _scanTargetId=null;
 }
+
 function closeScanner(){
   document.getElementById('scannerModal')?.classList.remove('show');
-  clearInterval(_scanInterval);_scanInterval=null;
-  if(_scanStream){_scanStream.getTracks().forEach(t=>t.stop());_scanStream=null;}
+  clearInterval(_scanInterval);
+  _scanInterval=null;
+  if(_zxingReader){
+    try{_zxingReader.reset();}catch(e){}
+    _zxingReader=null;
+  }
+  if(_scanStream){
+    _scanStream.getTracks().forEach(t=>t.stop());
+    _scanStream=null;
+  }
   const video=document.getElementById('scanner-video');
   if(video) video.srcObject=null;
+  _barcodeDetector=null;
 }
 function checkTagConflict(inputId,currentTab){
   const el=document.getElementById(inputId),hint=document.getElementById('conflict-'+inputId);
