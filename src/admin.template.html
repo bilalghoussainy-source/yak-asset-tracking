@@ -84,6 +84,13 @@ header{background:#fff;border-bottom:3px solid var(--yellow);padding:0 32px;heig
 .add-field input{border:1px solid var(--border2);border-radius:6px;padding:8px 11px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color 0.14s}
 .add-field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(87,106,132,0.12)}
 .add-hint{font-size:11px;color:var(--text3);margin-top:8px;grid-column:1/-1}
+.admin-search-wrap{flex:1;min-width:200px;max-width:320px}
+.admin-search-wrap input{width:100%;border:1px solid var(--border2);border-radius:6px;padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none}
+.admin-search-wrap input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(87,106,132,0.12)}
+.tab-access-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:6px}
+.tab-access-grid label{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:500;color:var(--text);cursor:pointer;text-transform:none;letter-spacing:0}
+.tab-access-grid input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer}
+.um-tabs-section{margin-top:4px;padding-top:12px;border-top:1px solid var(--border)}
 
 /* CLIENT TABLE */
 .clients-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
@@ -217,15 +224,18 @@ code{background:rgba(87,106,132,0.1);padding:1px 5px;border-radius:3px;font-fami
     <!-- App users (root / login) -->
     <div class="add-card">
       <div class="add-title">👤 App users — sign in at site root (<code>/</code>)</div>
-      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Each user has a <strong>login username</strong> (letters, numbers, <code>_</code>, <code>-</code>), a <strong>role</strong>, and optional <strong>client ID</strong> for client users. Passwords are stored hashed in Supabase.</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Each user has a <strong>login username</strong> (letters, numbers, <code>_</code>, <code>-</code>), a <strong>role</strong>, and optional <strong>client ID</strong> for client users. For client users you can enable or disable each of the six asset-tool tabs. Passwords are stored hashed in Supabase.</p>
       <div class="add-row" style="margin-bottom:10px">
         <button type="button" class="btn btn-primary" onclick="openUserModal(null)">+ Add user</button>
         <button type="button" class="btn btn-secondary" onclick="loadUsersTable()">🔄 Refresh users</button>
+        <div class="admin-search-wrap">
+          <input type="search" id="users-search" placeholder="Search login, display name, or client…" oninput="filterUsersTable(this.value)">
+        </div>
       </div>
       <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)">
         <table>
-          <thead><tr><th>Login</th><th>Display name</th><th>Role</th><th>Client ID</th><th>Actions</th></tr></thead>
-          <tbody id="users-tbody"><tr><td colspan="5" style="padding:16px;color:var(--text3)">Connect to Supabase, then refresh.</td></tr></tbody>
+          <thead><tr><th>Login</th><th>Display name</th><th>Role</th><th>Client ID</th><th>Tabs</th><th>Actions</th></tr></thead>
+          <tbody id="users-tbody"><tr><td colspan="6" style="padding:16px;color:var(--text3)">Connect to Supabase, then refresh.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -234,6 +244,9 @@ code{background:rgba(87,106,132,0.1);padding:1px 5px;border-radius:3px;font-fami
     <div class="clients-card">
       <div class="clients-header">
         <h2>👥 Client Tools</h2>
+        <div class="admin-search-wrap">
+          <input type="search" id="clients-search" placeholder="Search client ID, name, or portal login…" oninput="filterClientsTable(this.value)">
+        </div>
         <button class="btn btn-secondary btn-sm" onclick="loadClients()">🔄 Refresh</button>
       </div>
       <div style="overflow-x:auto">
@@ -302,6 +315,11 @@ code{background:rgba(87,106,132,0.1);padding:1px 5px;border-radius:3px;font-fami
     <div class="login-field"><label>Display name</label><input type="text" id="um-display" placeholder="Optional" autocomplete="off"></div>
     <div class="login-field"><label>Role</label><select id="um-role" onchange="umToggleClient()"><option value="client">Client user</option><option value="admin">Administrator</option></select></div>
     <div class="login-field" id="um-client-wrap"><label>Client ID (URL segment)</label><input type="text" id="um-client" placeholder="EIAC" autocomplete="off"></div>
+    <div class="login-field um-tabs-section" id="um-tabs-wrap" style="display:none">
+      <label>Client tabs — visible after sign-in</label>
+      <p style="font-size:11.5px;color:var(--text3);margin:0 0 8px;line-height:1.45">Choose which tabs this user can open in the asset tool. At least one must be enabled.</p>
+      <div class="tab-access-grid" id="um-tabs-grid"></div>
+    </div>
     <div class="login-field"><label id="um-pw1-lbl">Password</label><input type="password" id="um-pw1" autocomplete="new-password"></div>
     <div class="login-field"><label>Confirm password</label><input type="password" id="um-pw2" autocomplete="new-password"></div>
     <div class="login-err" id="um-err" style="display:none;margin-bottom:10px"></div>
@@ -334,6 +352,42 @@ code{background:rgba(87,106,132,0.1);padding:1px 5px;border-radius:3px;font-fami
 const PORTAL_AUTH_SALT='__PORTAL_AUTH_SALT__';
 const REGISTRY_KEY='_admin_clients_registry';
 const AUTH_USERS_INDEX_KEY='_auth_users_index';
+const CLIENT_TAB_DEFS=[
+  {id:'tab0',label:'Dashboard'},
+  {id:'tab1',label:'Received'},
+  {id:'tab2',label:'Retired'},
+  {id:'tab3',label:'Transfers'},
+  {id:'tab4',label:'Audit Log'},
+  {id:'tab5',label:'Resolve Conflicts'},
+];
+const DEFAULT_TAB_ACCESS=Object.fromEntries(CLIENT_TAB_DEFS.map(t=>[t.id,true]));
+function normalizeTabAccess(tabs){
+  const out={...DEFAULT_TAB_ACCESS};
+  if(!tabs||typeof tabs!=='object') return out;
+  CLIENT_TAB_DEFS.forEach(t=>{if(typeof tabs[t.id]==='boolean') out[t.id]=tabs[t.id];});
+  return out;
+}
+function formatTabAccessSummary(tabs){
+  const t=normalizeTabAccess(tabs);
+  const on=CLIENT_TAB_DEFS.filter(x=>t[x.id]).map(x=>x.label);
+  if(on.length===CLIENT_TAB_DEFS.length) return 'All tabs';
+  if(!on.length) return 'None';
+  if(on.length<=2) return on.join(', ');
+  return on.length+' tabs';
+}
+function renderUmTabsGrid(tabs){
+  const grid=document.getElementById('um-tabs-grid');
+  if(!grid) return;
+  const t=normalizeTabAccess(tabs);
+  grid.innerHTML=CLIENT_TAB_DEFS.map(x=>'<label><input type="checkbox" data-um-tab="'+x.id+'"'+(t[x.id]?' checked':'')+'>'+esc(x.label)+'</label>').join('');
+}
+function readUmTabs(){
+  const out={...DEFAULT_TAB_ACCESS};
+  document.querySelectorAll('#um-tabs-grid input[data-um-tab]').forEach(inp=>{
+    out[inp.dataset.umTab]=inp.checked;
+  });
+  return out;
+}
 const APP_SESSION_KEY='app_session';
 const BUILT_SB={
   url:('__SUPABASE_URL__'||'').trim().replace(/\/$/,''),
@@ -601,12 +655,26 @@ async function loadClients(){
 }
 
 function renderClientRows(data){
+  _clientsRowsCache=data||[];
+  const q=(document.getElementById('clients-search')||{}).value||'';
+  renderClientRowsFiltered(_clientsRowsCache,q);
+}
+function renderClientRowsFiltered(data,query){
   const tbody=document.getElementById('clients-tbody');
+  const q=(query||'').trim().toLowerCase();
+  const filtered=!q?data:data.filter(c=>{
+    const hay=[c.id,c.name,c.portalUser].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  });
   if(!data.length){
     tbody.innerHTML='<tr><td colspan="7"><div class="empty-clients"><div class="icon">👥</div><p>No clients registered yet. Add your first client above.</p></div></td></tr>';
     return;
   }
-  tbody.innerHTML=data.map((c,idx)=>{
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text3)">No clients match your search.</td></tr>';
+    return;
+  }
+  tbody.innerHTML=filtered.map((c,idx)=>{
     const activeChecked=c.active!==false?'checked':'';
     const statusLabel=c.active!==false?'<span class="status-label active">Active ✓</span>':'<span class="status-label inactive">Inactive ✗</span>';
     const recHtml=c.records?('<span class="count-badge">✅ '+c.records.tab1+'</span> <span class="count-badge" style="background:var(--red-lt);color:var(--red)">🗃 '+c.records.tab2+'</span> <span class="count-badge" style="background:var(--yellow-lt);color:var(--yellow-dk)">🔄 '+c.records.tab3+'</span>'):(c.error?'<span style="color:var(--text3);font-size:12px">Could not load</span>':'<span style="color:var(--text3);font-size:12px">—</span>');
@@ -628,6 +696,7 @@ function renderClientRows(data){
       '</div></td></tr>';
   }).join('');
 }
+function filterClientsTable(query){renderClientRowsFiltered(_clientsRowsCache,query);}
 
 function fmtDate(iso){
   if(!iso) return'—';
@@ -1006,9 +1075,13 @@ async function resetClientLabels(){
 }
 
 let _umEditSlug=null;
+let _usersListCache=[];
+let _clientsRowsCache=[];
 function umToggleClient(){
   const role=document.getElementById('um-role').value;
   document.getElementById('um-client-wrap').style.display=role==='client'?'block':'none';
+  const tw=document.getElementById('um-tabs-wrap');
+  if(tw) tw.style.display=role==='client'?'block':'none';
 }
 async function readUsersIndex(){
   if(!SB.url||!SB.key) return{users:[]};
@@ -1026,26 +1099,57 @@ async function writeUsersIndex(users){
 }
 async function loadUsersTable(){
   const tbody=document.getElementById('users-tbody');
-  if(!SB.url||!SB.key){tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--text3)">Connect to Supabase first.</td></tr>';return;}
-  tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--text3)">Loading…</td></tr>';
+  if(!SB.url||!SB.key){tbody.innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--text3)">Connect to Supabase first.</td></tr>';return;}
+  tbody.innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--text3)">Loading…</td></tr>';
   try{
     const idx=await readUsersIndex();
     const list=idx.users||[];
-    if(!list.length){tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--text3)">No app users yet. Add one with <strong>+ Add user</strong>.</td></tr>';return;}
-    tbody.innerHTML=list.map(u=>{
-      const slug=esc(u.slug);
-      const slugRaw=esc(u.slug);
-      const dn=esc(u.displayUsername||u.slug);
-      const role=u.role==='admin'?'Administrator':'Client';
-      const cid=u.role==='client'?esc(u.clientId||'—'):'—';
-      return'<tr><td><code>'+slug+'</code></td><td>'+dn+'</td><td>'+role+'</td><td><code>'+cid+'</code></td><td><div class="actions-cell">'+
-        '<button type="button" class="btn btn-secondary btn-sm" data-action="edit-user" data-slug="'+slugRaw+'">Edit</button>'+
-        '<button type="button" class="btn btn-danger btn-sm" data-action="delete-user" data-slug="'+slugRaw+'">Delete</button></div></td></tr>';
-    }).join('');
+    const enriched=await Promise.all(list.map(async u=>{
+      let tabs=null;
+      if(u.role==='client'){
+        try{
+          const row=await sbGet('_auth_user_'+u.slug);
+          const j=row?parseAuthUserValue(row.value):null;
+          if(j&&j.tabs) tabs=j.tabs;
+        }catch(e){}
+      }
+      return{...u,tabs};
+    }));
+    _usersListCache=enriched;
+    const q=(document.getElementById('users-search')||{}).value||'';
+    renderUsersTableRows(enriched,q);
   }catch(e){
-    tbody.innerHTML='<tr><td colspan="5" style="padding:16px;color:var(--red)">'+esc(e.message)+'</td></tr>';
+    tbody.innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--red)">'+esc(e.message)+'</td></tr>';
   }
 }
+function renderUsersTableRows(list,query){
+  const tbody=document.getElementById('users-tbody');
+  const q=(query||'').trim().toLowerCase();
+  const filtered=!q?list:list.filter(u=>{
+    const hay=[u.slug,u.displayUsername,u.clientId,u.role].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  if(!list.length){
+    tbody.innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--text3)">No app users yet. Add one with <strong>+ Add user</strong>.</td></tr>';
+    return;
+  }
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--text3)">No users match your search.</td></tr>';
+    return;
+  }
+  tbody.innerHTML=filtered.map(u=>{
+    const slug=esc(u.slug);
+    const slugRaw=esc(u.slug);
+    const dn=esc(u.displayUsername||u.slug);
+    const role=u.role==='admin'?'Administrator':'Client';
+    const cid=u.role==='client'?esc(u.clientId||'—'):'—';
+    const tabsCell=u.role==='client'?('<span style="font-size:12px">'+esc(formatTabAccessSummary(u.tabs))+'</span>'):'—';
+    return'<tr><td><code>'+slug+'</code></td><td>'+dn+'</td><td>'+role+'</td><td><code>'+cid+'</code></td><td>'+tabsCell+'</td><td><div class="actions-cell">'+
+      '<button type="button" class="btn btn-secondary btn-sm" data-action="edit-user" data-slug="'+slugRaw+'">Edit</button>'+
+      '<button type="button" class="btn btn-danger btn-sm" data-action="delete-user" data-slug="'+slugRaw+'">Delete</button></div></td></tr>';
+  }).join('');
+}
+function filterUsersTable(query){renderUsersTableRows(_usersListCache,query);}
 function openUserModal(slug){
   _umEditSlug=slug||null;
   document.getElementById('user-modal-title').textContent=slug?'Edit user':'Add user';
@@ -1058,6 +1162,7 @@ function openUserModal(slug){
   document.getElementById('um-pw1').value='';
   document.getElementById('um-pw2').value='';
   document.getElementById('um-pw1-lbl').textContent=slug?'New password (leave blank to keep)':'Password';
+  renderUmTabsGrid(DEFAULT_TAB_ACCESS);
   umToggleClient();
   if(slug){
     readUsersIndex().then(idx=>{
@@ -1069,6 +1174,10 @@ function openUserModal(slug){
         umToggleClient();
       }
     });
+    sbGet('_auth_user_'+slug).then(row=>{
+      const j=row?parseAuthUserValue(row.value):null;
+      if(j&&j.tabs) renderUmTabsGrid(j.tabs);
+    }).catch(()=>{});
   }
   document.getElementById('user-modal').classList.add('show');
 }
@@ -1089,6 +1198,8 @@ async function saveUserModal(){
   const p2=document.getElementById('um-pw2').value;
   if(role==='client'){
     if(!clientId||!/^[a-zA-Z0-9_-]{1,64}$/.test(clientId)){err.textContent='Enter a valid client ID (URL segment).';err.style.display='block';return;}
+    const tabs=readUmTabs();
+    if(!Object.values(tabs).some(Boolean)){err.textContent='Enable at least one tab for this client user.';err.style.display='block';return;}
   }
   if(p1||p2||!_umEditSlug){
     if((p1||p2)&&p1!==p2){err.textContent='Passwords do not match.';err.style.display='block';return;}
@@ -1110,6 +1221,7 @@ async function saveUserModal(){
       return;
     }
     const payload={displayUsername,passwordHash,role,clientId:role==='admin'?'':clientId};
+    if(role==='client') payload.tabs=readUmTabs();
     await sbSet('_auth_user_'+slug,JSON.stringify(payload));
     const verify=await sbGet('_auth_user_'+slug);
     const vj=verify?parseAuthUserValue(verify.value):null;
@@ -1216,6 +1328,8 @@ function initAdminActions(){
   window.removeClient=removeClient;
   window.saveUserModal=saveUserModal;
   window.openCredsModal=openCredsModal;
+  window.filterUsersTable=filterUsersTable;
+  window.filterClientsTable=filterClientsTable;
 }
 
 (function adminGate(){

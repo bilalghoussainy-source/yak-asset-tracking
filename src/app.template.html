@@ -382,18 +382,18 @@ tbody tr.conflict-row{background:#fff5f5}
       <div class="stat-chip"><span class="dot dot-green"></span><span id="hs-recv">0</span> Received</div>
       <div class="stat-chip"><span class="dot dot-red"></span><span id="hs-ret">0</span> Retired</div>
       <div class="stat-chip"><span class="dot dot-yellow"></span><span id="hs-tr">0</span> Transfers</div>
-      <div class="stat-chip" id="conflict-chip" onclick="switchTab('tab0',document.querySelector('.tab-btn'))">⚠ <span id="hs-conf">0</span> Conflicts</div>
+      <div class="stat-chip" id="conflict-chip" data-goto-tab="tab5" onclick="switchTab('tab5',document.querySelector('.tab-btn[data-tab-id=tab5]'))">⚠ <span id="hs-conf">0</span> Conflicts</div>
     </div>
   </div>
 </header>
 
 <div class="tab-bar">
-  <button class="tab-btn active" onclick="switchTab('tab0',this)">📊 Dashboard</button>
-  <button class="tab-btn" onclick="switchTab('tab1',this)">✅ Received <span class="tab-count" id="count1">0</span></button>
-  <button class="tab-btn" onclick="switchTab('tab2',this)">🗃️ Retired <span class="tab-count" id="count2">0</span></button>
-  <button class="tab-btn" onclick="switchTab('tab3',this)">🔄 Transfers <span class="tab-count" id="count3">0</span></button>
-  <button class="tab-btn" onclick="switchTab('tab4',this)" data-tab-id="tab4">📋 Audit Log <span class="tab-count" id="count4">0</span></button>
-  <button class="tab-btn" onclick="switchTab('tab5',this)" data-tab-id="tab5">⚡ Resolve Conflicts <span class="tab-count" id="count5" style="background:var(--red-lt);color:var(--red)">0</span></button>
+  <button class="tab-btn active" data-tab-id="tab0" onclick="switchTab('tab0',this)">📊 Dashboard</button>
+  <button class="tab-btn" data-tab-id="tab1" onclick="switchTab('tab1',this)">✅ Received <span class="tab-count" id="count1">0</span></button>
+  <button class="tab-btn" data-tab-id="tab2" onclick="switchTab('tab2',this)">🗃️ Retired <span class="tab-count" id="count2">0</span></button>
+  <button class="tab-btn" data-tab-id="tab3" onclick="switchTab('tab3',this)">🔄 Transfers <span class="tab-count" id="count3">0</span></button>
+  <button class="tab-btn" data-tab-id="tab4" onclick="switchTab('tab4',this)">📋 Audit Log <span class="tab-count" id="count4">0</span></button>
+  <button class="tab-btn" data-tab-id="tab5" onclick="switchTab('tab5',this)">⚡ Resolve Conflicts <span class="tab-count" id="count5" style="background:var(--red-lt);color:var(--red)">0</span></button>
 </div>
 
 <div class="main">
@@ -413,17 +413,17 @@ tbody tr.conflict-row{background:#fff5f5}
     <div class="dsb-right"><div class="dsb-title" id="dsb-client">Asset Count Session</div><div class="dsb-sub" id="dsb-time">Last updated: —</div></div>
   </div>
   <div class="dash-grid">
-    <div class="kpi-card kpi-received" onclick="switchTab('tab1',document.querySelectorAll('.tab-btn')[1])"><div class="kpi-icon">✅</div><div class="kpi-label">Received Assets</div><div class="kpi-value" id="kpi-recv">0</div><div class="kpi-sub">Click to view →</div></div>
-    <div class="kpi-card kpi-retired" onclick="switchTab('tab2',document.querySelectorAll('.tab-btn')[2])"><div class="kpi-icon">🗃️</div><div class="kpi-label">Retired Assets</div><div class="kpi-value" id="kpi-ret">0</div><div class="kpi-sub">Click to view →</div></div>
-    <div class="kpi-card kpi-transfer" onclick="switchTab('tab3',document.querySelectorAll('.tab-btn')[3])"><div class="kpi-icon">🔄</div><div class="kpi-label">Transfers / Updates</div><div class="kpi-value" id="kpi-tr">0</div><div class="kpi-sub">Click to view →</div></div>
-    <div class="kpi-card kpi-conflicts" onclick="switchTab('tab5',document.querySelector('.tab-btn[data-tab-id=tab5]'))"><div class="kpi-icon">⚠️</div><div class="kpi-label">Tag ID Conflicts</div><div class="kpi-value" id="kpi-conf">0</div><div class="kpi-sub">Click to resolve →</div></div>
+    <div class="kpi-card kpi-received" data-goto-tab="tab1" onclick="switchTab('tab1',document.querySelector('.tab-btn[data-tab-id=tab1]'))"><div class="kpi-icon">✅</div><div class="kpi-label">Received Assets</div><div class="kpi-value" id="kpi-recv">0</div><div class="kpi-sub">Click to view →</div></div>
+    <div class="kpi-card kpi-retired" data-goto-tab="tab2" onclick="switchTab('tab2',document.querySelector('.tab-btn[data-tab-id=tab2]'))"><div class="kpi-icon">🗃️</div><div class="kpi-label">Retired Assets</div><div class="kpi-value" id="kpi-ret">0</div><div class="kpi-sub">Click to view →</div></div>
+    <div class="kpi-card kpi-transfer" data-goto-tab="tab3" onclick="switchTab('tab3',document.querySelector('.tab-btn[data-tab-id=tab3]'))"><div class="kpi-icon">🔄</div><div class="kpi-label">Transfers / Updates</div><div class="kpi-value" id="kpi-tr">0</div><div class="kpi-sub">Click to view →</div></div>
+    <div class="kpi-card kpi-conflicts" data-goto-tab="tab5" onclick="switchTab('tab5',document.querySelector('.tab-btn[data-tab-id=tab5]'))"><div class="kpi-icon">⚠️</div><div class="kpi-label">Tag ID Conflicts</div><div class="kpi-value" id="kpi-conf">0</div><div class="kpi-sub">Click to resolve →</div></div>
   </div>
   <div class="dash-card">
     <div class="dash-card-header"><h3>⚠️ Conflict Detection</h3><span style="font-size:11px;color:var(--text3)">Tag IDs appearing in more than one section</span></div>
     <div class="dash-card-body"><div class="conflict-list" id="conflict-list"><div class="no-conflicts"><div class="icon">✅</div><p>No conflicts detected</p></div></div></div>
   </div>
   <div class="dash-card">
-    <div class="dash-card-header"><h3>🕐 Recent Activity</h3><button class="btn btn-sm btn-export" onclick="switchTab('tab4',document.querySelectorAll('.tab-btn')[4])">View Full Log →</button></div>
+    <div class="dash-card-header"><h3>🕐 Recent Activity</h3><button class="btn btn-sm btn-export" data-goto-tab="tab4" onclick="switchTab('tab4',document.querySelector('.tab-btn[data-tab-id=tab4]'))">View Full Log →</button></div>
     <div class="dash-card-body" style="padding:8px 18px"><div class="activity-feed" id="recent-activity"><div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">No activity yet.</div></div></div>
   </div>
 </div>
@@ -841,6 +841,51 @@ const ADMIN_PASSWORD_BOOTSTRAP=__ADMIN_PASSWORD_JSON__;
 const USE_SUPABASE=Boolean(SB_URL&&SB_KEY&&SB_TABLE);
 const AUTH_USERS_INDEX_KEY='_auth_users_index';
 const APP_SESSION_KEY='app_session';
+const CLIENT_TAB_IDS=['tab0','tab1','tab2','tab3','tab4','tab5'];
+const DEFAULT_TAB_ACCESS=Object.fromEntries(CLIENT_TAB_IDS.map(id=>[id,true]));
+let _activeTabAccess={...DEFAULT_TAB_ACCESS};
+function normalizeTabAccess(tabs){
+  const out={...DEFAULT_TAB_ACCESS};
+  if(!tabs||typeof tabs!=='object') return out;
+  CLIENT_TAB_IDS.forEach(id=>{if(typeof tabs[id]==='boolean') out[id]=tabs[id];});
+  return out;
+}
+function isTabAllowed(tabId){return _activeTabAccess[tabId]!==false;}
+function firstAllowedTab(){
+  return CLIENT_TAB_IDS.find(id=>isTabAllowed(id))||'tab0';
+}
+async function refreshUserTabAccessFromServer(sess){
+  if(!sess||!sess.slug||sess.role!=='client'||!USE_SUPABASE) return sess;
+  try{
+    const row=await sbGetGlobal('_auth_user_'+sess.slug);
+    const j=row?parseAuthUserValue(row.value):null;
+    if(j&&j.tabs){
+      sess.tabs=normalizeTabAccess(j.tabs);
+      writeAppSession(sess);
+    }
+  }catch(e){}
+  return sess;
+}
+function applyTabAccess(tabs){
+  if(CLIENT_ID==='default'){_activeTabAccess={...DEFAULT_TAB_ACCESS};return;}
+  const sess=readAppSession();
+  _activeTabAccess=normalizeTabAccess(tabs||(sess&&sess.tabs)||DEFAULT_TAB_ACCESS);
+  CLIENT_TAB_IDS.forEach(id=>{
+    const btn=document.querySelector('.tab-btn[data-tab-id="'+id+'"]');
+    if(btn) btn.style.display=isTabAllowed(id)?'':'none';
+  });
+  document.querySelectorAll('[data-goto-tab]').forEach(el=>{
+    const tid=el.getAttribute('data-goto-tab');
+    if(tid) el.style.display=isTabAllowed(tid)?'':'none';
+  });
+  const activePane=document.querySelector('.tab-pane.active');
+  const activeId=activePane?activePane.id:null;
+  if(!activeId||!isTabAllowed(activeId)){
+    const first=firstAllowedTab();
+    const btn=document.querySelector('.tab-btn[data-tab-id="'+first+'"]');
+    if(btn) switchTab(first,btn);
+  }
+}
 
 function normalizeUserSlug(u){
   const s=String(u||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_-]/g,'');
@@ -1612,6 +1657,7 @@ async function loadSupabaseTablesAndRef(){
 }
 
 function finishInitUI(){
+  applyTabAccess();
   applyLabels();
   applyOptions();
   updateRefStatus();
@@ -1754,7 +1800,7 @@ async function submitRootLogin(){
     }
     if(role==='client'){
       if(!clientId||!/^[a-zA-Z0-9_-]{1,64}$/.test(clientId)){errEl.textContent='User account is misconfigured (no client).';errEl.classList.add('show');return;}
-      writeAppSession({slug,role:'client',clientId,displayUsername});
+      writeAppSession({slug,role:'client',clientId,displayUsername,tabs:normalizeTabAccess(j.tabs)});
       const next=new URLSearchParams(location.search).get('next')||'';
       if(next&&next.startsWith('/')&&next.split('/').filter(Boolean)[0]===clientId) location.href=next;
       else location.href='/'+clientId;
@@ -1853,6 +1899,10 @@ async function init(){
     await loadOptions();
   }
 
+  if(CLIENT_ID!=='default'){
+    const sess=readAppSession();
+    if(sess&&sess.role==='client') await refreshUserTabAccessFromServer(sess);
+  }
   finishInitUI();
 }
 
@@ -1901,9 +1951,19 @@ function saveAudit(){
 //  TAB SWITCH
 // ══════════════════════════════════════════════════════════════
 function switchTab(tabId,btn){
+  if(CLIENT_ID!=='default'&&!isTabAllowed(tabId)){
+    const first=firstAllowedTab();
+    const fb=document.querySelector('.tab-btn[data-tab-id="'+first+'"]');
+    if(fb&&tabId!==first){switchTab(first,fb);return;}
+  }
+  if(!btn||!btn.classList||!btn.classList.contains('tab-btn')){
+    btn=document.querySelector('.tab-btn[data-tab-id="'+tabId+'"]');
+  }
+  if(!btn) return;
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
+  const pane=document.getElementById(tabId);
+  if(pane) pane.classList.add('active');
   btn.classList.add('active');
   if(tabId==='tab0') refreshDashboard();
   if(tabId==='tab5') renderConflictResolver();
