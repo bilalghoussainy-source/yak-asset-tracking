@@ -285,6 +285,41 @@ tbody tr.conflict-row{background:#fff5f5}
 
 @media(max-width:700px){.main{padding:12px}.tab-bar,header{padding-left:12px;padding-right:12px}.form-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.form-grid{grid-column:1fr}.tab-btn{padding:10px 10px;font-size:12px}}
+
+/* ── SCANNER ── */
+.scan-input-wrap{display:flex;width:100%}
+.scan-input-wrap input{border-radius:6px 0 0 6px!important;flex:1}
+.scan-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;background:var(--blue-lt);color:var(--blue);border:1px solid rgba(87,106,132,0.25);border-left:none;border-radius:0 6px 6px 0;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.14s;white-space:nowrap;flex-shrink:0}
+.scan-btn:hover{background:#dce2ea}
+.scanner-modal{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:600;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.scanner-modal.show{display:flex}
+.scanner-inner{background:#000;border-radius:14px;overflow:hidden;position:relative;width:min(92vw,420px);aspect-ratio:1}
+#scanner-video{width:100%;height:100%;object-fit:cover}
+.scanner-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.scanner-frame{width:65%;aspect-ratio:1;border:3px solid var(--yellow);border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45)}
+.scanner-label{color:#fff;font-size:13px;font-weight:600;text-align:center}
+.scanner-result{color:var(--yellow);font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;min-height:20px}
+.scanner-close{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:10px 30px;font-size:13px;font-weight:700;cursor:pointer}
+.scanner-close:hover{background:var(--blue-dk)}
+
+/* ── CONFLICT RESOLVER ── */
+.conflict-pair{background:#fff;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow)}
+.conflict-pair-header{background:var(--red-lt);border-bottom:1px solid #fca5a5;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.conflict-pair-tag{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:var(--red);color:#fff;padding:2px 8px;border-radius:4px}
+.conflict-pair-body{display:grid;grid-template-columns:1fr auto 1fr}
+@media(max-width:700px){.conflict-pair-body{grid-template-columns:1fr}}
+.conflict-side{padding:14px 16px}
+.conflict-side-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.conflict-fields{display:flex;flex-direction:column;gap:4px}
+.conflict-field{display:flex;gap:8px;font-size:12px}
+.conflict-field-name{color:var(--text3);font-weight:600;min-width:110px;flex-shrink:0}
+.conflict-field-val{color:var(--text);font-weight:500}
+.conflict-field-val.changed{color:var(--blue);font-weight:700}
+.conflict-arrow{display:flex;align-items:center;justify-content:center;padding:0 14px;background:var(--surface2);border-left:1px solid var(--border);border-right:1px solid var(--border);font-size:20px;color:var(--text3)}
+@media(max-width:700px){.conflict-arrow{border:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:8px}}
+.conflict-actions{padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.resolve-hint{font-size:11.5px;color:var(--text3);margin-left:auto}
+@media(max-width:700px){.resolve-hint{margin-left:0;width:100%}}
 </style>
 </head>
 <body>
@@ -356,7 +391,8 @@ tbody tr.conflict-row{background:#fff5f5}
   <button class="tab-btn" onclick="switchTab('tab1',this)">✅ Received <span class="tab-count" id="count1">0</span></button>
   <button class="tab-btn" onclick="switchTab('tab2',this)">🗃️ Retired <span class="tab-count" id="count2">0</span></button>
   <button class="tab-btn" onclick="switchTab('tab3',this)">🔄 Transfers <span class="tab-count" id="count3">0</span></button>
-  <button class="tab-btn" onclick="switchTab('tab4',this)">📋 Audit Log <span class="tab-count" id="count4">0</span></button>
+  <button class="tab-btn" onclick="switchTab('tab4',this)" data-tab-id="tab4">📋 Audit Log <span class="tab-count" id="count4">0</span></button>
+  <button class="tab-btn" onclick="switchTab('tab5',this)" data-tab-id="tab5">⚡ Resolve Conflicts <span class="tab-count" id="count5" style="background:var(--red-lt);color:var(--red)">0</span></button>
 </div>
 
 <div class="main">
@@ -379,7 +415,7 @@ tbody tr.conflict-row{background:#fff5f5}
     <div class="kpi-card kpi-received" onclick="switchTab('tab1',document.querySelectorAll('.tab-btn')[1])"><div class="kpi-icon">✅</div><div class="kpi-label">Received Assets</div><div class="kpi-value" id="kpi-recv">0</div><div class="kpi-sub">Click to view →</div></div>
     <div class="kpi-card kpi-retired" onclick="switchTab('tab2',document.querySelectorAll('.tab-btn')[2])"><div class="kpi-icon">🗃️</div><div class="kpi-label">Retired Assets</div><div class="kpi-value" id="kpi-ret">0</div><div class="kpi-sub">Click to view →</div></div>
     <div class="kpi-card kpi-transfer" onclick="switchTab('tab3',document.querySelectorAll('.tab-btn')[3])"><div class="kpi-icon">🔄</div><div class="kpi-label">Transfers / Updates</div><div class="kpi-value" id="kpi-tr">0</div><div class="kpi-sub">Click to view →</div></div>
-    <div class="kpi-card kpi-conflicts" onclick="switchTab('tab4',document.querySelectorAll('.tab-btn')[4])"><div class="kpi-icon">⚠️</div><div class="kpi-label">Tag ID Conflicts</div><div class="kpi-value" id="kpi-conf">0</div><div class="kpi-sub">Click to review →</div></div>
+    <div class="kpi-card kpi-conflicts" onclick="switchTab('tab5',document.querySelector('.tab-btn[data-tab-id=tab5]'))"><div class="kpi-icon">⚠️</div><div class="kpi-label">Tag ID Conflicts</div><div class="kpi-value" id="kpi-conf">0</div><div class="kpi-sub">Click to resolve →</div></div>
   </div>
   <div class="dash-card">
     <div class="dash-card-header"><h3>⚠️ Conflict Detection</h3><span style="font-size:11px;color:var(--text3)">Tag IDs appearing in more than one section</span></div>
@@ -476,7 +512,10 @@ tbody tr.conflict-row{background:#fff5f5}
       <div class="form-section-label">👤 Assignment</div>
       <div class="field">
         <label>Tag ID <span class="req">*</span></label>
-        <input id="r_tagid" placeholder="e.g. TAG-0001" oninput="checkTagConflict('r_tagid','tab1')">
+        <div class="scan-input-wrap">
+          <input id="r_tagid" placeholder="e.g. TAG-0001" oninput="checkTagConflict('r_tagid','tab1')">
+          <button type="button" class="scan-btn" onclick="openScanner('r_tagid')" title="Scan barcode / QR">📷 Scan</button>
+        </div>
         <span class="conflict-inline" id="conflict-r_tagid"></span>
       </div>
       <div class="field"><label>Employee No.</label><input id="r_employeeno" placeholder="e.g. EMP-123"></div>
@@ -550,7 +589,13 @@ tbody tr.conflict-row{background:#fff5f5}
     <div class="card-title"><span class="card-title-bar"></span> Retired Asset Entry</div>
     <div class="edit-mode-banner" id="edit-banner2">✏️ Editing row — update fields and click Save Changes</div>
     <div class="form-grid">
-      <div class="field"><label>Tag ID <span class="req">*</span></label><input id="rt_tagid" placeholder="e.g. TAG-0001" oninput="checkTagConflict('rt_tagid','tab2')"><span class="conflict-inline" id="conflict-rt_tagid"></span></div>
+      <div class="field"><label>Tag ID <span class="req">*</span></label>
+        <div class="scan-input-wrap">
+          <input id="rt_tagid" placeholder="e.g. TAG-0001" oninput="checkTagConflict('rt_tagid','tab2')">
+          <button type="button" class="scan-btn" onclick="openScanner('rt_tagid')" title="Scan barcode / QR">📷 Scan</button>
+        </div>
+        <span class="conflict-inline" id="conflict-rt_tagid"></span>
+      </div>
       <div class="field"><label>Employee No.</label><input id="rt_employeeno" placeholder="e.g. EMP-123"></div>
       <div class="field"><label>Employee Name</label><input id="rt_employeename" placeholder="Full name"></div>
       <div class="field"><label>Price</label><input id="rt_price" type="number" placeholder="0.00" min="0" step="0.01"></div>
@@ -590,7 +635,13 @@ tbody tr.conflict-row{background:#fff5f5}
     <div class="edit-mode-banner" id="edit-banner3">✏️ Editing row — update fields and click Save Changes</div>
     <div class="form-grid">
       <div class="form-section-label">🏷️ Asset Identification</div>
-      <div class="field"><label>Tag ID <span class="req">*</span></label><input id="tr_tagid" placeholder="Original Tag ID" oninput="checkTagConflict('tr_tagid','tab3')"><span class="conflict-inline" id="conflict-tr_tagid"></span></div>
+      <div class="field"><label>Tag ID <span class="req">*</span></label>
+        <div class="scan-input-wrap">
+          <input id="tr_tagid" placeholder="Original Tag ID" oninput="checkTagConflict('tr_tagid','tab3')">
+          <button type="button" class="scan-btn" onclick="openScanner('tr_tagid')" title="Scan barcode / QR">📷 Scan</button>
+        </div>
+        <span class="conflict-inline" id="conflict-tr_tagid"></span>
+      </div>
       <div class="form-section-label">📍 New Location &amp; Assignment</div>
       <div class="field"><label>New Room Tag ID</label><input id="tr_roomtagid" placeholder="New room tag"></div>
       <div class="field"><label>New Cost Centre</label><input id="tr_costcenter" placeholder="New cost centre"></div>
@@ -622,6 +673,24 @@ tbody tr.conflict-row{background:#fff5f5}
       <table id="table3"><thead><tr><th>#</th><th>Tag ID</th><th>New Room Tag ID</th><th>New Cost Centre</th><th>New Employee</th><th>New Brand</th><th>New Model</th><th>New Serial No.</th><th>New Plate No.</th><th>New Chassis No.</th><th>New Condition</th><th>New Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="tbody3"></tbody></table>
     </div>
     <div class="empty-state" id="empty3"><div class="icon">🔄</div><p>No transfers yet.</p></div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 5: CONFLICT RESOLVER ═══════════ -->
+<div class="tab-pane" id="tab5">
+  <div class="form-card">
+    <div class="card-title"><span class="card-title-bar" style="background:var(--red)"></span> Conflict Resolver</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+      Each card shows the same Tag ID in multiple tabs.
+      <strong>Received ↔ Transfer</strong>: applies transfer values to the received record and removes the transfer entry.
+      <strong>Received ↔ Retired</strong>: removes the received record; the retired entry stays.
+    </p>
+    <div id="conflict-resolver-list">
+      <div style="text-align:center;padding:40px;color:var(--text3)">
+        <div style="font-size:28px;margin-bottom:8px">✅</div>
+        <p>No conflicts to resolve.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -667,6 +736,16 @@ tbody tr.conflict-row{background:#fff5f5}
       <button class="btn btn-primary" id="modalImportBtn" onclick="confirmImport()" style="display:none">✅ Import Valid Rows</button>
     </div>
   </div>
+</div>
+
+<div class="scanner-modal" id="scannerModal">
+  <div class="scanner-label">Point camera at barcode or QR code</div>
+  <div class="scanner-inner">
+    <video id="scanner-video" autoplay playsinline muted></video>
+    <div class="scanner-overlay"><div class="scanner-frame"></div></div>
+  </div>
+  <div class="scanner-result" id="scanner-result">&nbsp;</div>
+  <button type="button" class="scanner-close" onclick="closeScanner()">✕ Cancel</button>
 </div>
 
 <div class="notif" id="notif"></div>
@@ -934,8 +1013,72 @@ async function loadLabels(){
 }
 
 const FIELDS=tab=>Object.keys(CONFIG[tab].fieldMap);
-const conditionPill={Excellent:'pill-green',Good:'pill-blue',Bad:'pill-red'};
-const statusPill={'In Use':'pill-green','Not In Use':'pill-gray'};
+const DEFAULT_CONDITION_OPTIONS=['Excellent','Good','Bad'];
+const DEFAULT_STATUS_OPTIONS=['In Use','Not In Use'];
+let activeConditionOptions=[...DEFAULT_CONDITION_OPTIONS];
+let activeStatusOptions=[...DEFAULT_STATUS_OPTIONS];
+function getPillClass(optionsArray,value){
+  const colours=['pill-green','pill-blue','pill-amber','pill-red'];
+  const idx=optionsArray.indexOf(value);
+  return(idx>=0&&idx<colours.length)?colours[idx]:'pill-gray';
+}
+function parseFieldOptions(val){
+  if(val==null) return {};
+  let j=val;
+  for(let i=0;i<2&&typeof j==='string';i++){try{j=JSON.parse(j);}catch(e){return {};}}
+  return j&&typeof j==='object'&&!Array.isArray(j)?j:{};
+}
+async function loadOptions(){
+  if(CLIENT_ID==='default') return;
+  const OPTIONS_KEY=CLIENT_ID+'_field_options';
+  try{
+    const saved=localStorage.getItem(OPTIONS_KEY);
+    if(saved){
+      const o=JSON.parse(saved);
+      if(o.condition&&o.condition.length) activeConditionOptions=o.condition;
+      if(o.status&&o.status.length) activeStatusOptions=o.status;
+      applyOptions();
+    }
+  }catch(e){}
+  if(USE_SUPABASE){
+    try{
+      const row=await sbGet('field_options');
+      if(row&&row.value!=null){
+        const o=parseFieldOptions(row.value);
+        if(o.condition&&o.condition.length) activeConditionOptions=o.condition;
+        if(o.status&&o.status.length) activeStatusOptions=o.status;
+        localStorage.setItem(OPTIONS_KEY,JSON.stringify(o));
+        applyOptions();
+      }
+    }catch(e){}
+  }
+}
+function applyOptions(){
+  ['r_condition','tr_condition'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel) return;
+    const current=sel.value;
+    sel.innerHTML='<option value="">— Select —</option>';
+    activeConditionOptions.forEach(opt=>{
+      const o=document.createElement('option');
+      o.value=opt;o.textContent=opt;
+      if(opt===current) o.selected=true;
+      sel.appendChild(o);
+    });
+  });
+  ['r_status','tr_status'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel) return;
+    const current=sel.value;
+    sel.innerHTML='<option value="">— Select —</option>';
+    activeStatusOptions.forEach(opt=>{
+      const o=document.createElement('option');
+      o.value=opt;o.textContent=opt;
+      if(opt===current) o.selected=true;
+      sel.appendChild(o);
+    });
+  });
+}
 
 // ══════════════════════════════════════════════════════════════
 //  REFERENCE DATA STORE
@@ -1363,11 +1506,23 @@ async function loadSupabaseTablesAndRef(){
 
 function finishInitUI(){
   applyLabels();
+  applyOptions();
   updateRefStatus();
   ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
   renderAuditLog(); refreshDashboard();
+  updateConflictCount();
   updateAuthLogoutBtns();
   startSupabasePoll();
+  const crList=document.getElementById('conflict-resolver-list');
+  if(crList){
+    crList.addEventListener('click',(e)=>{
+      const btn=e.target.closest('[data-resolve]');
+      if(!btn) return;
+      if(btn.dataset.resolve==='skip'){btn.closest('.conflict-pair').style.display='none';return;}
+      if(btn.dataset.resolve==='transfer') resolveTransfer(+btn.dataset.recv,+btn.dataset.tr);
+      if(btn.dataset.resolve==='retired') resolveRetired(+btn.dataset.recv,+btn.dataset.ret);
+    });
+  }
 }
 
 function updateAuthLogoutBtns(){
@@ -1382,6 +1537,8 @@ function startSupabasePoll(){
   if(_portalPollStarted||!USE_SUPABASE) return;
   _portalPollStarted=true;
   setInterval(async()=>{
+    loadLabels().catch(()=>{});
+    loadOptions().catch(()=>{});
     try{
       const [recvRow,retRow,trRow]=await Promise.all([
         sbGet('received'),sbGet('retired'),sbGet('transfers')
@@ -1400,7 +1557,6 @@ function startSupabasePoll(){
         showNotif('🔄 Data updated by teammate','info');
         setSyncUI('ok','Synced');
       }
-      loadLabels().catch(()=>{});
     }catch(e){setSyncUI('err','Sync error');}
   },25000);
 }
@@ -1576,15 +1732,18 @@ async function init(){
       }
       await loadSupabaseTablesAndRef();
       await loadLabels();
+      await loadOptions();
     }catch(err){
       setSyncUI('err','Offline — using local data');
       loadFromLocal();
       updateRefStatus();
       await loadLabels();
+      await loadOptions();
     }
   } else {
     loadFromLocal();
     await loadLabels();
+    await loadOptions();
   }
 
   finishInitUI();
@@ -1640,6 +1799,7 @@ function switchTab(tabId,btn){
   document.getElementById(tabId).classList.add('active');
   btn.classList.add('active');
   if(tabId==='tab0') refreshDashboard();
+  if(tabId==='tab5') renderConflictResolver();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1667,6 +1827,158 @@ function getTagMap(){
 }
 function getConflicts(){
   return Object.entries(getTagMap()).filter(([,arr])=>new Set(arr.map(x=>x.tab)).size>1).map(([tag,entries])=>({tag,entries}));
+}
+function updateConflictCount(){
+  const el=document.getElementById('count5');
+  if(el) el.textContent=getConflicts().length;
+}
+function renderRecvSideFields(row){
+  const fields=[
+    ['Room Tag ID',row.r_roomtagid],['Category',row.r_category],['Product',row.r_productdesc],
+    ['Condition',row.r_condition],['Status',row.r_status],['Brand',row.r_brand],['Model',row.r_model],
+  ];
+  return fields.filter(([,v])=>v).map(([k,v])=>'<div class="conflict-field"><span class="conflict-field-name">'+escHtml(k)+'</span><span class="conflict-field-val">'+escHtml(v)+'</span></div>').join('')||'<div style="color:var(--text3);font-size:12px">No details</div>';
+}
+function renderRetSideFields(row){
+  const fields=[['Emp No.',row.rt_employeeno],['Emp Name',row.rt_employeename],['Retirement Date',row.rt_retirementdate],['Notes',row.rt_notes]];
+  return fields.filter(([,v])=>v).map(([k,v])=>'<div class="conflict-field"><span class="conflict-field-name">'+escHtml(k)+'</span><span class="conflict-field-val">'+escHtml(v)+'</span></div>').join('')||'<div style="color:var(--text3);font-size:12px">No details</div>';
+}
+function buildTransferChanges(recvRow,trRow){
+  const map=[
+    ['r_roomtagid','tr_roomtagid','Room Tag ID'],['r_costcentre','tr_costcenter','Dept Code'],
+    ['r_employeename','tr_employee','Employee'],['r_brand','tr_brand','Brand'],['r_model','tr_model','Model'],
+    ['r_serialno','tr_serialno','Serial No.'],['r_platenumber','tr_platenumber','Plate No.'],
+    ['r_chassisnumber','tr_chassisnumber','Chassis No.'],['r_condition','tr_condition','Condition'],
+    ['r_status','tr_status','Status'],
+  ];
+  return map.filter(([,tk])=>trRow[tk]).map(([rk,tk,label])=>({label,from:recvRow[rk]||'—',to:trRow[tk]}));
+}
+function renderTransferChanges(recvRow,trRow){
+  const changes=buildTransferChanges(recvRow,trRow);
+  if(!changes.length) return '<div style="color:var(--text3);font-size:12px">No field changes</div>';
+  return changes.map(c=>'<div class="conflict-field"><span class="conflict-field-name">'+escHtml(c.label)+'</span><span class="conflict-field-val"><span style="color:var(--text3);text-decoration:line-through;font-size:11px">'+escHtml(c.from)+'</span>&nbsp;→&nbsp;<span class="changed">'+escHtml(c.to)+'</span></span></div>').join('');
+}
+function renderConflictResolver(){
+  const conflicts=getConflicts();
+  const container=document.getElementById('conflict-resolver-list');
+  if(!container) return;
+  updateConflictCount();
+  if(!conflicts.length){
+    container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">✅</div><p>No conflicts to resolve.</p></div>';
+    return;
+  }
+  let html='';
+  conflicts.forEach(({tag,entries})=>{
+    const recvEntries=entries.filter(e=>e.tab==='tab1');
+    const retEntries=entries.filter(e=>e.tab==='tab2');
+    const trEntries=entries.filter(e=>e.tab==='tab3');
+    recvEntries.forEach(recv=>{
+      trEntries.forEach(tr=>{
+        const recvRow=state.tab1[recv.idx],trRow=state.tab3[tr.idx];
+        if(!recvRow||!trRow) return;
+        const changes=buildTransferChanges(recvRow,trRow);
+        html+='<div class="conflict-pair"><div class="conflict-pair-header"><span class="conflict-pair-tag">'+escHtml(tag)+'</span><span style="font-size:12.5px;font-weight:600;color:var(--red)">Received ↔ Transfer — '+changes.length+' field'+(changes.length!==1?'s':'')+' will update</span></div>';
+        html+='<div class="conflict-pair-body"><div class="conflict-side"><div class="conflict-side-label" style="color:var(--green)">✅ Received (current values)</div><div class="conflict-fields">'+renderRecvSideFields(recvRow)+'</div></div>';
+        html+='<div class="conflict-arrow">→</div><div class="conflict-side"><div class="conflict-side-label" style="color:var(--blue)">🔄 Transfer (new values)</div><div class="conflict-fields">'+renderTransferChanges(recvRow,trRow)+'</div></div></div>';
+        html+='<div class="conflict-actions"><button type="button" class="btn btn-sm" style="background:var(--blue);color:#fff;border:none" data-resolve="transfer" data-recv="'+recv.idx+'" data-tr="'+tr.idx+'">✅ Apply Transfer &amp; Mark Complete</button>';
+        html+='<button type="button" class="btn btn-sm btn-cancel" data-resolve="skip">Skip for now</button><span class="resolve-hint">Received record will be updated · Transfer record will be removed</span></div></div>';
+      });
+    });
+    recvEntries.forEach(recv=>{
+      retEntries.forEach(ret=>{
+        const recvRow=state.tab1[recv.idx],retRow=state.tab2[ret.idx];
+        if(!recvRow||!retRow) return;
+        html+='<div class="conflict-pair"><div class="conflict-pair-header"><span class="conflict-pair-tag">'+escHtml(tag)+'</span><span style="font-size:12.5px;font-weight:600;color:var(--red)">Received ↔ Retired</span></div>';
+        html+='<div class="conflict-pair-body"><div class="conflict-side"><div class="conflict-side-label" style="color:var(--green)">✅ Received</div><div class="conflict-fields">'+renderRecvSideFields(recvRow)+'</div></div>';
+        html+='<div class="conflict-arrow">→</div><div class="conflict-side"><div class="conflict-side-label" style="color:var(--red)">🗃️ Retirement Details</div><div class="conflict-fields">'+renderRetSideFields(retRow)+'</div></div></div>';
+        html+='<div class="conflict-actions"><button type="button" class="btn btn-sm" style="background:var(--red);color:#fff;border:none" data-resolve="retired" data-recv="'+recv.idx+'" data-ret="'+ret.idx+'">🗃️ Confirm Retirement &amp; Remove from Received</button>';
+        html+='<button type="button" class="btn btn-sm btn-cancel" data-resolve="skip">Skip for now</button><span class="resolve-hint">Received record removed · Retired record stays</span></div></div>';
+      });
+    });
+  });
+  container.innerHTML=html||'<div style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">✅</div><p>No conflicts to resolve.</p></div>';
+}
+function resolveTransfer(recvIdx,trIdx){
+  const recvRow=state.tab1[recvIdx],trRow=state.tab3[trIdx];
+  if(!recvRow||!trRow) return;
+  const fieldMap=[
+    ['r_roomtagid','tr_roomtagid'],['r_costcentre','tr_costcenter'],['r_employeename','tr_employee'],
+    ['r_brand','tr_brand'],['r_model','tr_model'],['r_serialno','tr_serialno'],
+    ['r_platenumber','tr_platenumber'],['r_chassisnumber','tr_chassisnumber'],
+    ['r_condition','tr_condition'],['r_status','tr_status'],
+  ];
+  fieldMap.forEach(([rk,tk])=>{if(trRow[tk]) recvRow[rk]=trRow[tk];});
+  if(trRow.tr_notes) recvRow.r_notes=(recvRow.r_notes?recvRow.r_notes+' | ':'')+'Transfer: '+trRow.tr_notes;
+  const tagId=recvRow.r_tagid||'';
+  state.tab3.splice(trIdx,1);
+  logAction('edit','tab1','Transfer resolved — '+tagId+' updated from transfer record',tagId);
+  logAction('delete','tab3','Transfer record removed after conflict resolution',tagId);
+  save('tab1');save('tab3');
+  renderTable('tab1');renderTable('tab3');
+  updateCount('tab1');updateCount('tab3');
+  renderConflictResolver();refreshDashboard();
+  showNotif('✅ Transfer applied — received record updated, transfer removed.','success');
+}
+function resolveRetired(recvIdx,retIdx){
+  if(!confirm('Remove the received record? The asset will remain in the Retired tab.')) return;
+  const tagId=(state.tab1[recvIdx]||{}).r_tagid||'';
+  state.tab1.splice(recvIdx,1);
+  logAction('delete','tab1','Received record removed — asset confirmed retired (Tag: '+tagId+')',tagId);
+  save('tab1');
+  renderTable('tab1');updateCount('tab1');
+  renderConflictResolver();refreshDashboard();
+  showNotif('🗃️ Asset confirmed as retired — received record removed.','info');
+}
+let _scanTargetId=null,_scanStream=null,_scanInterval=null,_barcodeDetector=null;
+async function openScanner(targetFieldId){
+  if(!('BarcodeDetector' in window)){
+    showNotif('Camera scanning is not supported on this browser — type the Tag ID manually.','info');
+    return;
+  }
+  closeScanner();
+  _scanTargetId=targetFieldId;
+  document.getElementById('scanner-result').textContent='';
+  document.getElementById('scannerModal').classList.add('show');
+  try{
+    _barcodeDetector=new BarcodeDetector({formats:['code_128','code_39','code_93','ean_13','ean_8','upc_a','upc_e','qr_code','data_matrix','pdf417','aztec','itf']});
+    _scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});
+    document.getElementById('scanner-video').srcObject=_scanStream;
+    _scanInterval=setInterval(async()=>{
+      const video=document.getElementById('scanner-video');
+      if(!video||video.readyState<2) return;
+      try{
+        const barcodes=await _barcodeDetector.detect(video);
+        if(barcodes.length>0){
+          const value=barcodes[0].rawValue;
+          document.getElementById('scanner-result').textContent='✅ Scanned: '+value;
+          setTimeout(()=>completeScan(value),400);
+        }
+      }catch(e){}
+    },300);
+  }catch(err){
+    closeScanner();
+    if(err.name==='NotAllowedError') showNotif('Camera permission denied — allow camera access and try again.','error');
+    else showNotif('Camera error: '+err.message,'error');
+  }
+}
+function completeScan(value){
+  closeScanner();
+  if(!_scanTargetId) return;
+  const el=document.getElementById(_scanTargetId);
+  if(el){
+    el.value=value;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    el.focus();
+    showNotif('Scanned: '+value,'success');
+  }
+  _scanTargetId=null;
+}
+function closeScanner(){
+  document.getElementById('scannerModal')?.classList.remove('show');
+  clearInterval(_scanInterval);_scanInterval=null;
+  if(_scanStream){_scanStream.getTracks().forEach(t=>t.stop());_scanStream=null;}
+  const video=document.getElementById('scanner-video');
+  if(video) video.srcObject=null;
 }
 function checkTagConflict(inputId,currentTab){
   const el=document.getElementById(inputId),hint=document.getElementById('conflict-'+inputId);
@@ -1725,6 +2037,7 @@ function refreshDashboard(){
   const el=document.getElementById('conflict-list');
   if(!conflicts.length){el.innerHTML='<div class="no-conflicts"><div class="icon">✅</div><p>No conflicts detected</p></div>';}
   else el.innerHTML=conflicts.map(c=>`<div class="conflict-item"><span class="conflict-tag">${escHtml(c.tag)}</span><div class="conflict-desc">Found in ${c.entries.map(e=>'<strong>'+e.label+'</strong>').join(' &amp; ')}</div></div>`).join('');
+  updateConflictCount();
   // Recent activity
   const af=document.getElementById('recent-activity');
   const recent=auditLog.slice(0,8);
@@ -1813,6 +2126,7 @@ function addRow(tab){
   const c=getConflicts().filter(x=>x.tag===tagId.toUpperCase());
   if(c.length) logAction('conflict',tab,'Tag '+tagId+' in multiple tabs',tagId);
   refreshDashboard();
+  updateConflictCount();
 }
 
 function editRow(tab,idx){
@@ -1848,14 +2162,14 @@ function deleteRow(tab,idx){
   const tagId=state[tab][idx][CONFIG[tab].tagField]||'';
   logAction('delete',tab,CONFIG[tab].label+': Tag '+(tagId||'(no tag)')+' deleted',tagId);
   state[tab].splice(idx,1);
-  save(tab); renderTable(tab); updateCount(tab); showNotif('Row deleted.','info'); refreshDashboard();
+  save(tab); renderTable(tab); updateCount(tab); showNotif('Row deleted.','info'); refreshDashboard(); updateConflictCount();
 }
 
 function clearAll(tab){
   if(!confirm('Clear ALL records for this tab? This cannot be undone.')) return;
   logAction('delete',tab,'All '+CONFIG[tab].label+' records cleared ('+state[tab].length+' rows)','-');
   state[tab]=[]; editState[tab]=-1; cancelEdit(tab);
-  save(tab); renderTable(tab); updateCount(tab); showNotif('All records cleared.','info'); refreshDashboard();
+  save(tab); renderTable(tab); updateCount(tab); showNotif('All records cleared.','info'); refreshDashboard(); updateConflictCount();
 }
 
 function updateCount(tab){document.getElementById('count'+tab.slice(-1)).textContent=state[tab].length;}
@@ -1881,8 +2195,8 @@ function renderTable(tab,filter=''){
     let cells=`<td>${displayIdx+1}</td>`;
     flds.forEach(id=>{
       const v=r[id]||'';
-      if(id===conf.conditionField&&v) cells+=`<td><span class="pill ${conditionPill[v]||'pill-gray'}">${escHtml(v)}</span></td>`;
-      else if(id===conf.statusField&&v) cells+=`<td><span class="pill ${statusPill[v]||'pill-gray'}">${escHtml(v)}</span></td>`;
+      if(id===conf.conditionField&&v) cells+=`<td><span class="pill ${getPillClass(activeConditionOptions,v)}">${escHtml(v)}</span></td>`;
+      else if(id===conf.statusField&&v) cells+=`<td><span class="pill ${getPillClass(activeStatusOptions,v)}">${escHtml(v)}</span></td>`;
       else if(id===conf.tagField&&hasConflict) cells+=`<td title="${escHtml(v)}">${escHtml(v)}<span class="conflict-badge">⚠ Conflict</span></td>`;
       else cells+=`<td title="${escHtml(v)}">${escHtml(v)}</td>`;
     });
@@ -1996,7 +2310,7 @@ function confirmImport(){
   else showNotif(rows.length+' row'+(rows.length!==1?'s':'')+' imported.');
   save(tab);renderTable(tab);updateCount(tab);closeModal();
   showImportResult(tab,'✅ '+rows.length+' rows imported.','ok');
-  pendingImport={tab:null,rows:[]};refreshDashboard();
+  pendingImport={tab:null,rows:[]};refreshDashboard();updateConflictCount();
 }
 function showImportResult(tab,msg,type){
   const el=document.getElementById('ir'+tab.slice(-1));el.className='import-result '+type+' show';el.innerHTML=msg;

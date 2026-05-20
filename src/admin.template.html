@@ -256,6 +256,24 @@ code{background:rgba(87,106,132,0.1);padding:1px 5px;border-radius:3px;font-fami
       </div>
     </div>
 
+    <!-- Condition & Status options per client -->
+    <div class="clients-card" style="margin-top:24px">
+      <div class="clients-header">
+        <h2>⚙️ Condition &amp; Status Options — Customise per Client</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="options-client-select" class="btn btn-secondary btn-sm" style="font-family:'Inter',sans-serif;padding:6px 10px;min-width:160px">
+            <option value="">— Select client —</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="load-options">Load Options</button>
+          <button type="button" class="btn btn-primary btn-sm" data-action="save-options">💾 Save Options</button>
+          <button type="button" class="btn btn-danger btn-sm" data-action="reset-options">↺ Reset Defaults</button>
+        </div>
+      </div>
+      <div id="options-body" style="padding:20px;color:var(--text3);font-size:13px;text-align:center">
+        Select a client and click Load Options to begin.
+      </div>
+    </div>
+
     <!-- Field labels per client -->
     <div class="clients-card" style="margin-top:24px">
       <div class="clients-header">
@@ -525,6 +543,7 @@ function renderClientsFromLocal(){
   loadClientsFromLocal();
   if(clients.length) renderClientRows(clients.map(c=>({...c,portalUser:'',records:null,lastSync:null})));
   populateLabelClientSelect();
+  populateOptionsClientSelect();
 }
 
 function tabRowsFromStored(val){
@@ -578,6 +597,7 @@ async function loadClients(){
   saveClientsLocal();
   renderClientRows(enriched);
   populateLabelClientSelect();
+  populateOptionsClientSelect();
 }
 
 function renderClientRows(data){
@@ -767,6 +787,120 @@ const LABEL_SECTIONS={
 };
 let currentLabelClient='';
 let currentLabels={...DEFAULT_LABELS};
+
+const DEFAULT_CONDITION_OPTIONS_ADMIN=['Excellent','Good','Bad'];
+const DEFAULT_STATUS_OPTIONS_ADMIN=['In Use','Not In Use'];
+let currentOptionsClient='';
+let currentConditionOptions=[];
+let currentStatusOptions=[];
+
+function populateOptionsClientSelect(){
+  const sel=document.getElementById('options-client-select');
+  if(!sel) return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— Select client —</option>';
+  clients.forEach(c=>{
+    const opt=document.createElement('option');
+    opt.value=c.id;
+    opt.textContent=c.name||c.id;
+    sel.appendChild(opt);
+  });
+  if(prev&&clients.some(c=>c.id===prev)) sel.value=prev;
+}
+
+async function loadClientOptions(){
+  const clientId=document.getElementById('options-client-select')?.value;
+  if(!clientId){showNotif('Select a client first.','error');return;}
+  if(!requireSb('load options')) return;
+  currentOptionsClient=clientId;
+  try{
+    const row=await sbGet(clientId+'_field_options');
+    const saved=row&&row.value!=null?parseLabelsValue(row.value):{};
+    currentConditionOptions=[...(saved.condition&&saved.condition.length?saved.condition:DEFAULT_CONDITION_OPTIONS_ADMIN)];
+    currentStatusOptions=[...(saved.status&&saved.status.length?saved.status:DEFAULT_STATUS_OPTIONS_ADMIN)];
+    showNotif('Options loaded for '+clientId,'success');
+  }catch(e){
+    currentConditionOptions=[...DEFAULT_CONDITION_OPTIONS_ADMIN];
+    currentStatusOptions=[...DEFAULT_STATUS_OPTIONS_ADMIN];
+    showNotif('No custom options yet — showing defaults','info');
+  }
+  renderOptionsEditor();
+}
+
+function renderOptionsEditor(){
+  const body=document.getElementById('options-body');
+  if(!body||!currentOptionsClient) return;
+  const pillColours=['#e4f5ec|#1a8a4a','#EEF1F5|#576A84','#FFF8E1|#b38600','#fde8e6|#c0392b'];
+  function buildList(type,title,options,defaults){
+    const isDefault=JSON.stringify(options)===JSON.stringify(defaults);
+    let h='<div><div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px">'+esc(title);
+    if(!isDefault) h+='<span style="color:var(--green);font-size:10px">✎ customised</span>';
+    h+='</div><div style="display:flex;flex-direction:column;gap:6px">';
+    options.forEach((opt,i)=>{
+      const [bg,fg]=(pillColours[i]||'#f0f2f6|#4b5370').split('|');
+      h+='<div style="display:flex;align-items:center;gap:6px"><span style="background:'+bg+';color:'+fg+';font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;min-width:24px;text-align:center">'+(i+1)+'</span>';
+      h+='<input type="text" value="'+esc(opt)+'" data-opt-type="'+esc(type)+'" data-opt-idx="'+i+'" style="flex:1;border:1px solid var(--border2);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:Inter,sans-serif;outline:none">';
+      h+='<button type="button" class="btn btn-danger btn-sm" data-action="remove-option" data-opt-type="'+esc(type)+'" data-opt-idx="'+i+'">✕</button></div>';
+    });
+    h+='</div><button type="button" class="btn btn-secondary btn-sm" data-action="add-option" data-opt-type="'+esc(type)+'" style="margin-top:8px;width:100%">+ Add Option</button></div>';
+    return h;
+  }
+  body.innerHTML='<p style="font-size:12px;color:var(--text3);margin-bottom:18px;text-align:left">Editing: <strong style="color:var(--blue)">'+esc(currentOptionsClient)+'</strong> — changes appear in the client tool within ~30 seconds.<br><span style="font-size:11px">Pill colours: 1st=Green · 2nd=Blue · 3rd=Amber · 4th=Red</span></p><div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">'+buildList('condition','Condition Options',currentConditionOptions,DEFAULT_CONDITION_OPTIONS_ADMIN)+buildList('status','Status Options',currentStatusOptions,DEFAULT_STATUS_OPTIONS_ADMIN)+'</div>';
+  body.style.textAlign='left';
+}
+
+function collectOptions(type){
+  return [...document.querySelectorAll('[data-opt-type="'+type+'"]')].map(i=>i.value.trim()).filter(Boolean);
+}
+
+function addOption(type){
+  if(type==='condition') currentConditionOptions.push('New Option');
+  else currentStatusOptions.push('New Option');
+  renderOptionsEditor();
+  setTimeout(()=>{
+    const inputs=document.querySelectorAll('[data-opt-type="'+type+'"]');
+    if(inputs.length){inputs[inputs.length-1].select();inputs[inputs.length-1].focus();}
+  },50);
+}
+
+function removeOption(type,idx){
+  if(type==='condition'){
+    if(currentConditionOptions.length<=1){showNotif('Must have at least one option.','error');return;}
+    currentConditionOptions.splice(idx,1);
+  }else{
+    if(currentStatusOptions.length<=1){showNotif('Must have at least one option.','error');return;}
+    currentStatusOptions.splice(idx,1);
+  }
+  renderOptionsEditor();
+}
+
+async function saveClientOptions(){
+  if(!currentOptionsClient){showNotif('Load a client first.','error');return;}
+  if(!requireSb('save options')) return;
+  const cond=collectOptions('condition');
+  const stat=collectOptions('status');
+  if(!cond.length||!stat.length){showNotif('Both lists need at least one option.','error');return;}
+  try{
+    await sbSet(currentOptionsClient+'_field_options',JSON.stringify({condition:cond,status:stat}));
+    currentConditionOptions=cond;
+    currentStatusOptions=stat;
+    renderOptionsEditor();
+    showNotif('Options saved for '+currentOptionsClient+' ✅','success');
+  }catch(e){showNotif('Save failed: '+e.message,'error');}
+}
+
+async function resetClientOptions(){
+  if(!currentOptionsClient){showNotif('Load a client first.','error');return;}
+  if(!confirm('Reset options for "'+currentOptionsClient+'" back to defaults?')) return;
+  if(!requireSb('reset options')) return;
+  try{
+    await sbSet(currentOptionsClient+'_field_options',JSON.stringify({}));
+    currentConditionOptions=[...DEFAULT_CONDITION_OPTIONS_ADMIN];
+    currentStatusOptions=[...DEFAULT_STATUS_OPTIONS_ADMIN];
+    renderOptionsEditor();
+    showNotif('Options reset to defaults.','info');
+  }catch(e){showNotif('Reset failed: '+e.message,'error');}
+}
 
 function parseLabelsValue(val){
   if(val==null) return {};
@@ -1054,6 +1188,28 @@ function initAdminActions(){
       if(btn&&btn.dataset.labelFid) resetOneLabel(btn.dataset.labelFid);
     });
   }
+  const optionsBody=document.getElementById('options-body');
+  document.querySelector('[data-action="load-options"]')?.addEventListener('click',()=>loadClientOptions());
+  document.querySelector('[data-action="save-options"]')?.addEventListener('click',()=>saveClientOptions());
+  document.querySelector('[data-action="reset-options"]')?.addEventListener('click',()=>resetClientOptions());
+  if(optionsBody){
+    optionsBody.addEventListener('click',(e)=>{
+      const btn=e.target.closest('button[data-action]');
+      if(!btn) return;
+      const type=btn.dataset.optType;
+      const idx=btn.dataset.optIdx!=null?+btn.dataset.optIdx:null;
+      if(btn.dataset.action==='add-option'&&type) addOption(type);
+      if(btn.dataset.action==='remove-option'&&type!=null&&idx!=null) removeOption(type,idx);
+    });
+    optionsBody.addEventListener('input',(e)=>{
+      const inp=e.target.closest('[data-opt-type][data-opt-idx]');
+      if(!inp) return;
+      const type=inp.dataset.optType;
+      const idx=+inp.dataset.optIdx;
+      if(type==='condition'&&currentConditionOptions[idx]!=null) currentConditionOptions[idx]=inp.value;
+      if(type==='status'&&currentStatusOptions[idx]!=null) currentStatusOptions[idx]=inp.value;
+    });
+  }
   window.openUserModal=openUserModal;
   window.deleteAppUser=deleteAppUser;
   window.removeClient=removeClient;
@@ -1072,6 +1228,7 @@ function initAdminActions(){
   initAdminActions();
   loadSavedConfig();
   populateLabelClientSelect();
+  populateOptionsClientSelect();
 })();
 </script>
 </body>
