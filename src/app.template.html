@@ -644,9 +644,77 @@ tbody tr.conflict-row{background:#fff5f5}
         <span class="conflict-inline" id="conflict-tr_tagid"></span>
       </div>
       <div class="form-section-label">📍 New Location &amp; Assignment</div>
-      <div class="field"><label>New Room Tag ID</label><input id="tr_roomtagid" placeholder="New room tag"></div>
-      <div class="field"><label>New Cost Centre</label><input id="tr_costcenter" placeholder="New cost centre"></div>
-      <div class="field"><label>New Employee</label><input id="tr_employee" placeholder="New employee"></div>
+      <div class="field">
+        <label data-label-for="tr_city">New City</label>
+        <div class="ss-wrap" id="wrap-tr_city">
+          <input class="ss-input" id="tr_city" placeholder="— Select City —" readonly onclick="toggleSS('tr_city')">
+          <span class="ss-caret">▼</span>
+          <div class="ss-dropdown" id="dd-tr_city">
+            <div class="ss-search"><input placeholder="Search city…" oninput="filterSS('tr_city',this.value)"></div>
+            <div class="ss-list" id="list-tr_city"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label data-label-for="tr_site">New Site</label>
+        <div class="ss-wrap" id="wrap-tr_site">
+          <input class="ss-input" id="tr_site" placeholder="— Select Site —" readonly onclick="toggleSS('tr_site')">
+          <span class="ss-caret">▼</span>
+          <div class="ss-dropdown" id="dd-tr_site">
+            <div class="ss-search"><input placeholder="Search site…" oninput="filterSS('tr_site',this.value)"></div>
+            <div class="ss-list" id="list-tr_site"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label data-label-for="tr_building">New Building</label>
+        <div class="ss-wrap" id="wrap-tr_building">
+          <input class="ss-input" id="tr_building" placeholder="— Select Building —" readonly onclick="toggleSS('tr_building')">
+          <span class="ss-caret">▼</span>
+          <div class="ss-dropdown" id="dd-tr_building">
+            <div class="ss-search"><input placeholder="Search building…" oninput="filterSS('tr_building',this.value)"></div>
+            <div class="ss-list" id="list-tr_building"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label data-label-for="tr_floor">New Floor</label>
+        <div class="ss-wrap" id="wrap-tr_floor">
+          <input class="ss-input" id="tr_floor" placeholder="— Select Floor —" readonly onclick="toggleSS('tr_floor')">
+          <span class="ss-caret">▼</span>
+          <div class="ss-dropdown" id="dd-tr_floor">
+            <div class="ss-search"><input placeholder="Search floor…" oninput="filterSS('tr_floor',this.value)"></div>
+            <div class="ss-list" id="list-tr_floor"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label data-label-for="tr_roomtagid">New Room Tag ID</label>
+        <div class="ss-wrap" id="wrap-tr_roomtagid">
+          <input class="ss-input" id="tr_roomtagid" placeholder="— Select Location Code —" readonly onclick="toggleSS('tr_roomtagid')">
+          <span class="ss-caret">▼</span>
+          <div class="ss-dropdown" id="dd-tr_roomtagid">
+            <div class="ss-search"><input placeholder="Search location code…" oninput="filterSS('tr_roomtagid',this.value)"></div>
+            <div class="ss-list" id="list-tr_roomtagid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label data-label-for="tr_department">New Department Desc</label>
+        <div class="ss-wrap" id="wrap-tr_department">
+          <input class="ss-input" id="tr_department" placeholder="— Select Department —" readonly onclick="toggleSS('tr_department')">
+          <span class="ss-caret">▼</span>
+          <div class="ss-dropdown" id="dd-tr_department">
+            <div class="ss-search"><input placeholder="Search department…" oninput="filterSS('tr_department',this.value)"></div>
+            <div class="ss-list" id="list-tr_department"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label data-label-for="tr_costcenter">New Department Code</label>
+        <input id="tr_costcenter" placeholder="Auto-filled from department" readonly style="background:var(--surface2);color:var(--text2);cursor:not-allowed">
+      </div>
+      <div class="field"><label data-label-for="tr_employee">New Employee</label><input id="tr_employee" placeholder="New employee"></div>
       <div class="form-section-label">🔧 Updated Asset Info</div>
       <div class="field"><label>New Brand</label><input id="tr_brand" placeholder="New brand"></div>
       <div class="field"><label>New Model</label><input id="tr_model" placeholder="New model"></div>
@@ -671,7 +739,7 @@ tbody tr.conflict-row{background:#fff5f5}
       <button class="btn btn-danger" onclick="clearAll('tab3')">🗑 Clear</button>
     </div>
     <div class="table-wrap">
-      <table id="table3"><thead><tr><th>#</th><th>Tag ID</th><th>New Room Tag ID</th><th>New Cost Centre</th><th>New Employee</th><th>New Brand</th><th>New Model</th><th>New Serial No.</th><th>New Plate No.</th><th>New Chassis No.</th><th>New Condition</th><th>New Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="tbody3"></tbody></table>
+      <table id="table3"><thead><tr><th>#</th><th data-col-for="tr_tagid">Tag ID</th><th data-col-for="tr_city">New City</th><th data-col-for="tr_site">New Site</th><th data-col-for="tr_building">New Building</th><th data-col-for="tr_floor">New Floor</th><th data-col-for="tr_roomtagid">New Room Tag ID</th><th data-col-for="tr_department">New Dept Desc</th><th data-col-for="tr_costcenter">New Dept Code</th><th data-col-for="tr_employee">New Employee</th><th data-col-for="tr_brand">New Brand</th><th data-col-for="tr_model">New Model</th><th data-col-for="tr_serialno">New Serial No.</th><th data-col-for="tr_platenumber">New Plate No.</th><th data-col-for="tr_chassisnumber">New Chassis No.</th><th data-col-for="tr_condition">New Condition</th><th data-col-for="tr_status">New Status</th><th data-col-for="tr_notes">Notes</th><th>Actions</th></tr></thead><tbody id="tbody3"></tbody></table>
     </div>
     <div class="empty-state" id="empty3"><div class="icon">🔄</div><p>No transfers yet.</p></div>
   </div>
@@ -908,10 +976,10 @@ const CONFIG={
   },
   tab3:{
     storageKey:CLIENT_ID+'_tr_v3',
-    fieldMap:{tr_tagid:'TagID',tr_roomtagid:'New RoomTagID',tr_costcenter:'New CostCenter',tr_employee:'New Employee',tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No',tr_platenumber:'New Plate Number',tr_chassisnumber:'New Chassis Number',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes'},
-    required:['tr_tagid'],tagField:'tr_tagid',conditionField:'tr_condition',statusField:'tr_status',ssFields:[],
+    fieldMap:{tr_tagid:'TagID',tr_city:'New City',tr_site:'New Site',tr_building:'New Building',tr_floor:'New Floor',tr_roomtagid:'New RoomTagID',tr_department:'New Dept Description',tr_costcenter:'New CostCenter',tr_employee:'New Employee',tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No',tr_platenumber:'New Plate Number',tr_chassisnumber:'New Chassis Number',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes'},
+    required:['tr_tagid'],tagField:'tr_tagid',conditionField:'tr_condition',statusField:'tr_status',ssFields:['tr_city','tr_site','tr_building','tr_floor','tr_roomtagid','tr_department'],
     sheetIndex:2,templateName:'Transfer_Assets_Template.xlsx',label:'Transfer',tabColor:'yellow',
-    colHeaders:['#','Tag ID','New Room Tag ID','New Cost Centre','New Employee','New Brand','New Model','New Serial No.','New Plate No.','New Chassis No.','New Condition','New Status','Notes','Actions']
+    colHeaders:['#','Tag ID','New City','New Site','New Building','New Floor','New Room Tag ID','New Dept Desc','New Dept Code','New Employee','New Brand','New Model','New Serial No.','New Plate No.','New Chassis No.','New Condition','New Status','Notes','Actions']
   }
 };
 const AUDIT_KEY=CLIENT_ID+'_audit_v3';
@@ -927,7 +995,8 @@ const DEFAULT_LABELS={
   r_ponumber:'PO Number',r_podate:'PO Date',r_invoicenumber:'Invoice Number',r_invoicedate:'Invoice Date',
   rt_tagid:'Tag ID',rt_employeeno:'Employee No.',rt_employeename:'Employee Name',
   rt_price:'Price',rt_retirementdate:'Retirement Date',rt_notes:'Notes',
-  tr_tagid:'Tag ID',tr_roomtagid:'New Room Tag ID',tr_costcenter:'New Cost Centre',tr_employee:'New Employee',
+  tr_tagid:'Tag ID',tr_city:'New City',tr_site:'New Site',tr_building:'New Building',tr_floor:'New Floor',
+  tr_roomtagid:'New Room Tag ID',tr_department:'New Dept Description',tr_costcenter:'New Dept Code',tr_employee:'New Employee',
   tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No.',tr_platenumber:'New Plate No.',
   tr_chassisnumber:'New Chassis No.',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes',
 };
@@ -935,7 +1004,7 @@ let activeLabels={...DEFAULT_LABELS};
 const TABLE_COL_FIELDS={
   table1:['r_city','r_site','r_building','r_floor','r_roomtagid','r_locationdesc','r_category','r_subcategory','r_productdesc','r_department','r_costcentre','r_tagid','r_employeeno','r_employeename','r_condition','r_status','r_brand','r_model','r_serialno','r_externalid','r_platenumber','r_chassisnumber','r_price','r_dateinservice','r_notes','r_grnnumber','r_grndate','r_ponumber','r_podate','r_invoicenumber','r_invoicedate'],
   table2:['rt_tagid','rt_employeeno','rt_employeename','rt_price','rt_retirementdate','rt_notes'],
-  table3:['tr_tagid','tr_roomtagid','tr_costcenter','tr_employee','tr_brand','tr_model','tr_serialno','tr_platenumber','tr_chassisnumber','tr_condition','tr_status','tr_notes'],
+  table3:['tr_tagid','tr_city','tr_site','tr_building','tr_floor','tr_roomtagid','tr_department','tr_costcenter','tr_employee','tr_brand','tr_model','tr_serialno','tr_platenumber','tr_chassisnumber','tr_condition','tr_status','tr_notes'],
 };
 function parseLabelsValue(val){
   if(val==null) return {};
@@ -973,8 +1042,8 @@ function updateConfigHeaders(){
     L.r_invoicenumber,L.r_invoicedate,'Actions'];
   CONFIG.tab2.colHeaders=['#',L.rt_tagid,L.rt_employeeno,L.rt_employeename,L.rt_price,L.rt_retirementdate,L.rt_notes,'Actions'];
   CONFIG.tab3.colHeaders=['#',
-    L.tr_tagid,L.tr_roomtagid,L.tr_costcenter,L.tr_employee,L.tr_brand,L.tr_model,
-    L.tr_serialno,L.tr_platenumber,L.tr_chassisnumber,L.tr_condition,L.tr_status,L.tr_notes,'Actions'];
+    L.tr_tagid,L.tr_city,L.tr_site,L.tr_building,L.tr_floor,L.tr_roomtagid,L.tr_department,L.tr_costcenter,L.tr_employee,
+    L.tr_brand,L.tr_model,L.tr_serialno,L.tr_platenumber,L.tr_chassisnumber,L.tr_condition,L.tr_status,L.tr_notes,'Actions'];
 }
 function applyLabels(){
   document.querySelectorAll('[data-label-for]').forEach(el=>{
@@ -1101,6 +1170,8 @@ function updateRefStatus(){
   populateSS('r_city',Object.keys(refData.locTree).sort());
   populateSS('r_category',Object.keys(refData.catTree).sort());
   populateSS('r_department',Object.keys(refData.deptMap).sort());
+  populateSS('tr_city',Object.keys(refData.locTree).sort());
+  populateSS('tr_department',Object.keys(refData.deptMap).sort());
 }
 
 function importRefData(event,type){
@@ -1414,6 +1485,11 @@ function selectSS(fieldId,value){
   else if(fieldId==='r_category') onCategoryChange(value);
   else if(fieldId==='r_subcategory') onSubcategoryChange(value);
   else if(fieldId==='r_department') onDepartmentChange(value);
+  else if(fieldId==='tr_city') onTrCityChange(value);
+  else if(fieldId==='tr_site') onTrSiteChange(value);
+  else if(fieldId==='tr_building') onTrBuildingChange(value);
+  else if(fieldId==='tr_floor') onTrFloorChange(value);
+  else if(fieldId==='tr_department') onTrDepartmentChange(value);
 }
 
 function ssGetValue(fieldId){ return (document.getElementById(fieldId)||{}).value||''; }
@@ -1461,6 +1537,35 @@ function onDepartmentChange(desc){
   const code=refData.deptMap[desc]||'';
   const codeEl=document.getElementById('r_costcentre');
   if(codeEl) codeEl.value=code;
+}
+
+function onTrCityChange(city){
+  clearSS('tr_site');clearSS('tr_building');clearSS('tr_floor');clearSS('tr_roomtagid');
+  const sites=city&&refData.locTree[city]?Object.keys(refData.locTree[city]).sort():[];
+  populateSS('tr_site',sites);
+}
+function onTrSiteChange(site){
+  const city=ssGetValue('tr_city');
+  clearSS('tr_building');clearSS('tr_floor');clearSS('tr_roomtagid');
+  const bldgs=city&&site&&refData.locTree[city]&&refData.locTree[city][site]?Object.keys(refData.locTree[city][site]).sort():[];
+  populateSS('tr_building',bldgs);
+}
+function onTrBuildingChange(bldg){
+  const city=ssGetValue('tr_city'),site=ssGetValue('tr_site');
+  clearSS('tr_floor');clearSS('tr_roomtagid');
+  const floors=city&&site&&bldg&&refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]?Object.keys(refData.locTree[city][site][bldg]).sort((a,b)=>isNaN(a)?1:isNaN(b)?-1:+a-+b):[];
+  populateSS('tr_floor',floors);
+}
+function onTrFloorChange(floor){
+  const city=ssGetValue('tr_city'),site=ssGetValue('tr_site'),bldg=ssGetValue('tr_building');
+  clearSS('tr_roomtagid');
+  const codes=city&&site&&bldg&&floor&&refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]&&refData.locTree[city][site][bldg][floor]?[...refData.locTree[city][site][bldg][floor]].sort():[];
+  populateSS('tr_roomtagid',codes);
+}
+function onTrDepartmentChange(desc){
+  const code=refData.deptMap[desc]||'';
+  const el=document.getElementById('tr_costcenter');
+  if(el) el.value=code;
 }
 
 function clearSS(fieldId){
@@ -1847,7 +1952,8 @@ function renderRetSideFields(row){
 }
 function buildTransferChanges(recvRow,trRow){
   const map=[
-    ['r_roomtagid','tr_roomtagid','Room Tag ID'],['r_costcentre','tr_costcenter','Dept Code'],
+    ['r_city','tr_city','City'],['r_site','tr_site','Site'],['r_building','tr_building','Building'],['r_floor','tr_floor','Floor'],
+    ['r_roomtagid','tr_roomtagid','Room Tag ID'],['r_department','tr_department','Dept Desc'],['r_costcentre','tr_costcenter','Dept Code'],
     ['r_employeename','tr_employee','Employee'],['r_brand','tr_brand','Brand'],['r_model','tr_model','Model'],
     ['r_serialno','tr_serialno','Serial No.'],['r_platenumber','tr_platenumber','Plate No.'],
     ['r_chassisnumber','tr_chassisnumber','Chassis No.'],['r_condition','tr_condition','Condition'],
@@ -1904,7 +2010,8 @@ function resolveTransfer(recvIdx,trIdx){
   const recvRow=state.tab1[recvIdx],trRow=state.tab3[trIdx];
   if(!recvRow||!trRow) return;
   const fieldMap=[
-    ['r_roomtagid','tr_roomtagid'],['r_costcentre','tr_costcenter'],['r_employeename','tr_employee'],
+    ['r_city','tr_city'],['r_site','tr_site'],['r_building','tr_building'],['r_floor','tr_floor'],
+    ['r_roomtagid','tr_roomtagid'],['r_department','tr_department'],['r_costcentre','tr_costcenter'],['r_employeename','tr_employee'],
     ['r_brand','tr_brand'],['r_model','tr_model'],['r_serialno','tr_serialno'],
     ['r_platenumber','tr_platenumber'],['r_chassisnumber','tr_chassisnumber'],
     ['r_condition','tr_condition'],['r_status','tr_status'],
@@ -2204,6 +2311,15 @@ function editRow(tab,idx){
     if(city&&site&&bldg&&floor){const codes=refData.locTree[city]&&refData.locTree[city][site]&&refData.locTree[city][site][bldg]&&refData.locTree[city][site][bldg][floor]?[...refData.locTree[city][site][bldg][floor]].sort():[];populateSS('r_roomtagid',codes);}
     if(cat){populateSS('r_subcategory',refData.catTree[cat]?Object.keys(refData.catTree[cat]).sort():[]);}
     if(cat&&sub){populateSS('r_productdesc',refData.catTree[cat]&&refData.catTree[cat][sub]?[...refData.catTree[cat][sub]].sort():[]);}
+  }
+  if(tab==='tab3'){
+    const tc=row.tr_city||'',ts=row.tr_site||'',tb=row.tr_building||'',tf=row.tr_floor||'';
+    populateSS('tr_city',Object.keys(refData.locTree).sort());
+    populateSS('tr_department',Object.keys(refData.deptMap).sort());
+    if(tc) populateSS('tr_site',refData.locTree[tc]?Object.keys(refData.locTree[tc]).sort():[]);
+    if(tc&&ts) populateSS('tr_building',refData.locTree[tc]&&refData.locTree[tc][ts]?Object.keys(refData.locTree[tc][ts]).sort():[]);
+    if(tc&&ts&&tb) populateSS('tr_floor',refData.locTree[tc]&&refData.locTree[tc][ts]&&refData.locTree[tc][ts][tb]?Object.keys(refData.locTree[tc][ts][tb]).sort((a,b)=>isNaN(a)?1:isNaN(b)?-1:+a-+b):[]);
+    if(tc&&ts&&tb&&tf) populateSS('tr_roomtagid',refData.locTree[tc]&&refData.locTree[tc][ts]&&refData.locTree[tc][ts][tb]&&refData.locTree[tc][ts][tb][tf]?[...refData.locTree[tc][ts][tb][tf]].sort():[]);
   }
   editState[tab]=idx;
   document.getElementById('edit-banner'+n).classList.add('show');
