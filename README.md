@@ -31,7 +31,8 @@ Users live in the **same** `asset_tracker` (or your `SUPABASE_TABLE`) key–valu
 2. You are redirected to **`/admin`** automatically.
 3. **App users** — add users with role *Administrator* or *Client* (set **Client ID** to the URL segment, e.g. `EIAC`).
 4. **Client tools** — register clients, toggle `{CLIENT}_active`, optional `{CLIENT}_portal_creds`.
-5. **Sign out** (header) clears the session and returns to **`/`**.
+5. **Field labels** — per client, rename form and table column labels (stored as `{CLIENT}_field_labels` in Supabase; client tool picks them up within ~30s).
+6. **Sign out** (header) clears the session and returns to **`/`**.
 
 ## Local development
 
@@ -61,7 +62,7 @@ Users live in the **same** `asset_tracker` (or your `SUPABASE_TABLE`) key–valu
 
 - `key` (text, primary key), `value` (jsonb or text), `updated_at` (timestamptz)
 
-Per **client** data: `{CLIENT}_received`, `{CLIENT}_retired`, `{CLIENT}_transfers`, `{CLIENT}_audit`, `{CLIENT}_active`, optional ref rows and `{CLIENT}_portal_creds`.
+Per **client** data: `{CLIENT}_received`, `{CLIENT}_retired`, `{CLIENT}_transfers`, `{CLIENT}_audit`, `{CLIENT}_active`, `{CLIENT}_field_labels` (custom label overrides), optional ref rows and `{CLIENT}_portal_creds`.
 
 **Global:** `_auth_users_index`, `_auth_user_<slug>`, `_admin_clients_registry`.
 

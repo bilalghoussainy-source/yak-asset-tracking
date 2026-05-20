@@ -834,6 +834,105 @@ const CONFIG={
   }
 };
 const AUDIT_KEY=CLIENT_ID+'_audit_v3';
+
+const DEFAULT_LABELS={
+  r_city:'City',r_site:'Site',r_building:'Building',r_floor:'Floor',r_roomtagid:'Room Tag ID',
+  r_locationdesc:'Location Desc',r_category:'Category',r_subcategory:'Sub-Category',r_productdesc:'Product Desc',
+  r_department:'Department Description',r_costcentre:'Department Code',r_tagid:'Tag ID',
+  r_employeeno:'Employee No.',r_employeename:'Employee Name',r_condition:'Condition',r_status:'Status',
+  r_brand:'Brand',r_model:'Model',r_serialno:'Serial No.',r_externalid:'External ID',
+  r_platenumber:'Plate Number',r_chassisnumber:'Chassis Number',r_price:'Price',
+  r_dateinservice:'Date In Service',r_notes:'Notes',r_grnnumber:'GRN Number',r_grndate:'GRN Date',
+  r_ponumber:'PO Number',r_podate:'PO Date',r_invoicenumber:'Invoice Number',r_invoicedate:'Invoice Date',
+  rt_tagid:'Tag ID',rt_employeeno:'Employee No.',rt_employeename:'Employee Name',
+  rt_price:'Price',rt_retirementdate:'Retirement Date',rt_notes:'Notes',
+  tr_tagid:'Tag ID',tr_roomtagid:'New Room Tag ID',tr_costcenter:'New Cost Centre',tr_employee:'New Employee',
+  tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No.',tr_platenumber:'New Plate No.',
+  tr_chassisnumber:'New Chassis No.',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes',
+};
+let activeLabels={...DEFAULT_LABELS};
+const TABLE_COL_FIELDS={
+  table1:['r_city','r_site','r_building','r_floor','r_roomtagid','r_locationdesc','r_category','r_subcategory','r_productdesc','r_department','r_costcentre','r_tagid','r_employeeno','r_employeename','r_condition','r_status','r_brand','r_model','r_serialno','r_externalid','r_platenumber','r_chassisnumber','r_price','r_dateinservice','r_notes','r_grnnumber','r_grndate','r_ponumber','r_podate','r_invoicenumber','r_invoicedate'],
+  table2:['rt_tagid','rt_employeeno','rt_employeename','rt_price','rt_retirementdate','rt_notes'],
+  table3:['tr_tagid','tr_roomtagid','tr_costcenter','tr_employee','tr_brand','tr_model','tr_serialno','tr_platenumber','tr_chassisnumber','tr_condition','tr_status','tr_notes'],
+};
+function parseLabelsValue(val){
+  if(val==null) return {};
+  let j=val;
+  for(let i=0;i<2&&typeof j==='string';i++){try{j=JSON.parse(j);}catch(e){return {};}}
+  return j&&typeof j==='object'&&!Array.isArray(j)?j:{};
+}
+function bindLabelHooks(){
+  ['tab1','tab2','tab3'].forEach(tabId=>{
+    const pane=document.getElementById(tabId);
+    if(!pane) return;
+    pane.querySelectorAll('.field').forEach(f=>{
+      const inp=f.querySelector('[id^="r_"],[id^="rt_"],[id^="tr_"]');
+      if(!inp||!inp.id) return;
+      const lbl=f.querySelector('label');
+      if(lbl) lbl.setAttribute('data-label-for',inp.id);
+    });
+  });
+  Object.entries(TABLE_COL_FIELDS).forEach(([tableId,fids])=>{
+    const table=document.getElementById(tableId);
+    if(!table) return;
+    const ths=table.querySelectorAll('thead tr th');
+    fids.forEach((fid,i)=>{if(ths[i+1]) ths[i+1].setAttribute('data-col-for',fid);});
+  });
+}
+function updateConfigHeaders(){
+  const L=activeLabels;
+  CONFIG.tab1.colHeaders=['#',
+    L.r_city,L.r_site,L.r_building,L.r_floor,L.r_roomtagid,L.r_locationdesc,
+    L.r_category,L.r_subcategory,L.r_productdesc,L.r_department,L.r_costcentre,
+    L.r_tagid,L.r_employeeno,L.r_employeename,L.r_condition,L.r_status,
+    L.r_brand,L.r_model,L.r_serialno,L.r_externalid,L.r_platenumber,
+    L.r_chassisnumber,L.r_price,L.r_dateinservice,L.r_notes,
+    L.r_grnnumber,L.r_grndate,L.r_ponumber,L.r_podate,
+    L.r_invoicenumber,L.r_invoicedate,'Actions'];
+  CONFIG.tab2.colHeaders=['#',L.rt_tagid,L.rt_employeeno,L.rt_employeename,L.rt_price,L.rt_retirementdate,L.rt_notes,'Actions'];
+  CONFIG.tab3.colHeaders=['#',
+    L.tr_tagid,L.tr_roomtagid,L.tr_costcenter,L.tr_employee,L.tr_brand,L.tr_model,
+    L.tr_serialno,L.tr_platenumber,L.tr_chassisnumber,L.tr_condition,L.tr_status,L.tr_notes,'Actions'];
+}
+function applyLabels(){
+  document.querySelectorAll('[data-label-for]').forEach(el=>{
+    const fid=el.getAttribute('data-label-for');
+    const lbl=activeLabels[fid]||DEFAULT_LABELS[fid]||fid;
+    const star=el.querySelector('.req');
+    [...el.childNodes].forEach(n=>{if(n.nodeType===3) n.remove();});
+    if(star) el.insertBefore(document.createTextNode(lbl+' '),star);
+    else el.textContent=lbl;
+  });
+  document.querySelectorAll('[data-col-for]').forEach(el=>{
+    const fid=el.getAttribute('data-col-for');
+    el.textContent=activeLabels[fid]||DEFAULT_LABELS[fid]||fid;
+  });
+  updateConfigHeaders();
+}
+async function loadLabels(){
+  if(CLIENT_ID==='default') return;
+  const LABELS_KEY=CLIENT_ID+'_field_labels';
+  try{
+    const saved=localStorage.getItem(LABELS_KEY);
+    if(saved){
+      activeLabels={...DEFAULT_LABELS,...JSON.parse(saved)};
+      applyLabels();
+    }
+  }catch(e){}
+  if(USE_SUPABASE){
+    try{
+      const row=await sbGet('field_labels');
+      if(row&&row.value!=null){
+        const remote=parseLabelsValue(row.value);
+        activeLabels={...DEFAULT_LABELS,...remote};
+        localStorage.setItem(LABELS_KEY,JSON.stringify(remote));
+        applyLabels();
+      }
+    }catch(e){}
+  }
+}
+
 const FIELDS=tab=>Object.keys(CONFIG[tab].fieldMap);
 const conditionPill={Excellent:'pill-green',Good:'pill-blue',Bad:'pill-red'};
 const statusPill={'In Use':'pill-green','Not In Use':'pill-gray'};
@@ -1263,6 +1362,7 @@ async function loadSupabaseTablesAndRef(){
 }
 
 function finishInitUI(){
+  applyLabels();
   updateRefStatus();
   ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
   renderAuditLog(); refreshDashboard();
@@ -1300,6 +1400,7 @@ function startSupabasePoll(){
         showNotif('🔄 Data updated by teammate','info');
         setSyncUI('ok','Synced');
       }
+      loadLabels().catch(()=>{});
     }catch(e){setSyncUI('err','Sync error');}
   },25000);
 }
@@ -1437,6 +1538,7 @@ async function init(){
   const lbl=document.getElementById('client-label');
   if(CLIENT_ID!=='default' && lbl) lbl.innerHTML='— <strong style="color:var(--yellow)">'+CLIENT_ID.toUpperCase()+'</strong> &nbsp;|&nbsp; Asset Registration &amp; Management System';
   if(CLIENT_ID!=='default') document.title=CLIENT_ID.toUpperCase()+' — Asset Tracking';
+  if(CLIENT_ID!=='default') bindLabelHooks();
 
   try{const ld=localStorage.getItem(CLIENT_ID+'_refdata_location');if(ld){refData.locTree=JSON.parse(ld);refData.loaded.loc=true;}}catch(e){}
   try{const cd=localStorage.getItem(CLIENT_ID+'_refdata_category');if(cd){refData.catTree=JSON.parse(cd);refData.loaded.cat=true;}}catch(e){}
@@ -1473,13 +1575,16 @@ async function init(){
         return;
       }
       await loadSupabaseTablesAndRef();
+      await loadLabels();
     }catch(err){
       setSyncUI('err','Offline — using local data');
       loadFromLocal();
       updateRefStatus();
+      await loadLabels();
     }
   } else {
     loadFromLocal();
+    await loadLabels();
   }
 
   finishInitUI();

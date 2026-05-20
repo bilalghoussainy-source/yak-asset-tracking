@@ -256,6 +256,24 @@ code{background:rgba(87,106,132,0.1);padding:1px 5px;border-radius:3px;font-fami
       </div>
     </div>
 
+    <!-- Field labels per client -->
+    <div class="clients-card" style="margin-top:24px">
+      <div class="clients-header">
+        <h2>🏷️ Field Labels — Rename Fields for Client</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="label-client-select" class="btn btn-secondary btn-sm" style="font-family:'Inter',sans-serif;padding:6px 10px;min-width:160px">
+            <option value="">— Select client —</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="load-labels">Load Labels</button>
+          <button type="button" class="btn btn-primary btn-sm" data-action="save-labels">💾 Save Labels</button>
+          <button type="button" class="btn btn-danger btn-sm" data-action="reset-labels">↺ Reset Defaults</button>
+        </div>
+      </div>
+      <div id="labels-body" style="padding:20px;color:var(--text3);font-size:13px">
+        Select a client and click Load Labels to begin.
+      </div>
+    </div>
+
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -506,6 +524,7 @@ async function pushRegistryToSupabase(){
 function renderClientsFromLocal(){
   loadClientsFromLocal();
   if(clients.length) renderClientRows(clients.map(c=>({...c,portalUser:'',records:null,lastSync:null})));
+  populateLabelClientSelect();
 }
 
 function tabRowsFromStored(val){
@@ -558,6 +577,7 @@ async function loadClients(){
   });
   saveClientsLocal();
   renderClientRows(enriched);
+  populateLabelClientSelect();
 }
 
 function renderClientRows(data){
@@ -685,6 +705,7 @@ async function addClient(){
       showNotif('Client "'+name+'" added and activated ✅','success');
     }catch(err){showNotif('Client added locally but Supabase write failed: '+err.message,'error');}
     loadClients();
+    populateLabelClientSelect();
   } else {
     renderClientsFromLocal();
     showNotif('Client "'+name+'" added (connect Supabase to sync).','info');
@@ -719,6 +740,135 @@ async function refreshClient(clientId,idx){
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+const DEFAULT_LABELS={
+  r_city:'City',r_site:'Site',r_building:'Building',r_floor:'Floor',r_roomtagid:'Room Tag ID',
+  r_locationdesc:'Location Desc',r_category:'Category',r_subcategory:'Sub-Category',r_productdesc:'Product Desc',
+  r_department:'Department Description',r_costcentre:'Department Code',r_tagid:'Tag ID',
+  r_employeeno:'Employee No.',r_employeename:'Employee Name',r_condition:'Condition',r_status:'Status',
+  r_brand:'Brand',r_model:'Model',r_serialno:'Serial No.',r_externalid:'External ID',
+  r_platenumber:'Plate Number',r_chassisnumber:'Chassis Number',r_price:'Price',
+  r_dateinservice:'Date In Service',r_notes:'Notes',r_grnnumber:'GRN Number',r_grndate:'GRN Date',
+  r_ponumber:'PO Number',r_podate:'PO Date',r_invoicenumber:'Invoice Number',r_invoicedate:'Invoice Date',
+  rt_tagid:'Tag ID',rt_employeeno:'Employee No.',rt_employeename:'Employee Name',
+  rt_price:'Price',rt_retirementdate:'Retirement Date',rt_notes:'Notes',
+  tr_tagid:'Tag ID',tr_roomtagid:'New Room Tag ID',tr_costcenter:'New Cost Centre',tr_employee:'New Employee',
+  tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No.',tr_platenumber:'New Plate No.',
+  tr_chassisnumber:'New Chassis No.',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes',
+};
+const LABEL_SECTIONS={
+  '📍 Received — Location':['r_city','r_site','r_building','r_floor','r_roomtagid','r_locationdesc'],
+  '🏷️ Received — Classification':['r_category','r_subcategory','r_productdesc','r_department','r_costcentre'],
+  '👤 Received — Assignment':['r_tagid','r_employeeno','r_employeename'],
+  '🔧 Received — Asset Details':['r_condition','r_status','r_brand','r_model','r_serialno','r_externalid','r_platenumber','r_chassisnumber','r_price','r_dateinservice','r_notes'],
+  '📄 Received — Procurement':['r_grnnumber','r_grndate','r_ponumber','r_podate','r_invoicenumber','r_invoicedate'],
+  '🗃️ Retired':['rt_tagid','rt_employeeno','rt_employeename','rt_price','rt_retirementdate','rt_notes'],
+  '🔄 Transfer / Updated':['tr_tagid','tr_roomtagid','tr_costcenter','tr_employee','tr_brand','tr_model','tr_serialno','tr_platenumber','tr_chassisnumber','tr_condition','tr_status','tr_notes'],
+};
+let currentLabelClient='';
+let currentLabels={...DEFAULT_LABELS};
+
+function parseLabelsValue(val){
+  if(val==null) return {};
+  let j=val;
+  for(let i=0;i<2&&typeof j==='string';i++){try{j=JSON.parse(j);}catch(e){return {};}}
+  return j&&typeof j==='object'&&!Array.isArray(j)?j:{};
+}
+
+function populateLabelClientSelect(){
+  const sel=document.getElementById('label-client-select');
+  if(!sel) return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— Select client —</option>';
+  clients.forEach(c=>{
+    const opt=document.createElement('option');
+    opt.value=c.id;
+    opt.textContent=c.name||c.id;
+    sel.appendChild(opt);
+  });
+  if(prev&&clients.some(c=>c.id===prev)) sel.value=prev;
+}
+
+async function loadClientLabels(){
+  const clientId=document.getElementById('label-client-select').value;
+  if(!clientId){showNotif('Select a client first.','error');return;}
+  if(!requireSb('load labels')) return;
+  currentLabelClient=clientId;
+  try{
+    const row=await sbGet(clientId+'_field_labels');
+    const saved=row&&row.value!=null?parseLabelsValue(row.value):{};
+    currentLabels={...DEFAULT_LABELS,...saved};
+    showNotif('Labels loaded for '+clientId,'success');
+  }catch(e){
+    currentLabels={...DEFAULT_LABELS};
+    showNotif('No custom labels yet — showing defaults','info');
+  }
+  renderLabelEditor();
+}
+
+function renderLabelEditor(){
+  const body=document.getElementById('labels-body');
+  if(!body||!currentLabelClient) return;
+  let html='<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Editing: <strong>'+esc(currentLabelClient)+'</strong> — changes appear in the client tool within ~30 seconds.</p>';
+  Object.entries(LABEL_SECTIONS).forEach(([section,fields])=>{
+    html+='<div style="margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.6px;padding:6px 0 8px;border-bottom:1px solid var(--border);margin-bottom:10px">'+esc(section)+'</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px 14px">';
+    fields.forEach(fid=>{
+      const current=currentLabels[fid]||DEFAULT_LABELS[fid]||fid;
+      const def=DEFAULT_LABELS[fid]||fid;
+      const changed=current!==def;
+      html+='<div style="display:flex;flex-direction:column;gap:3px">';
+      html+='<label style="font-size:10.5px;font-weight:600;color:var(--text3);display:flex;align-items:center;gap:5px">';
+      html+='<code style="background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:10px;color:var(--blue)">'+esc(fid)+'</code>';
+      if(changed) html+='<span style="color:var(--green);font-size:10px">✎ customised</span>';
+      html+='</label><div style="display:flex;gap:6px;align-items:center">';
+      html+='<input type="text" id="lbl_'+esc(fid)+'" data-label-fid="'+esc(fid)+'" value="'+esc(current)+'" placeholder="'+esc(def)+'" style="flex:1;border:1px solid '+(changed?'var(--green)':'var(--border2)')+';border-radius:6px;padding:6px 9px;font-size:12.5px;background:'+(changed?'#f0fff4':'#fff')+';outline:none;font-family:Inter,sans-serif;color:var(--text)">';
+      if(changed) html+='<button type="button" class="btn btn-secondary btn-sm" data-action="reset-one-label" data-label-fid="'+esc(fid)+'" title="Reset to default">↺</button>';
+      html+='</div><span style="font-size:10px;color:var(--text3)">Default: '+esc(def)+'</span></div>';
+    });
+    html+='</div></div>';
+  });
+  body.innerHTML=html;
+}
+
+function resetOneLabel(fid){
+  currentLabels[fid]=DEFAULT_LABELS[fid];
+  renderLabelEditor();
+}
+
+async function saveClientLabels(){
+  if(!currentLabelClient){showNotif('Load a client first.','error');return;}
+  if(!requireSb('save labels')) return;
+  const customised={};
+  Object.keys(DEFAULT_LABELS).forEach(fid=>{
+    const inp=document.getElementById('lbl_'+fid);
+    if(!inp) return;
+    const val=inp.value.trim();
+    if(val&&val!==DEFAULT_LABELS[fid]) customised[fid]=val;
+  });
+  try{
+    await sbSet(currentLabelClient+'_field_labels',JSON.stringify(customised));
+    currentLabels={...DEFAULT_LABELS,...customised};
+    renderLabelEditor();
+    showNotif('Labels saved for '+currentLabelClient+' ✅','success');
+  }catch(e){
+    showNotif('Save failed: '+e.message,'error');
+  }
+}
+
+async function resetClientLabels(){
+  if(!currentLabelClient){showNotif('Load a client first.','error');return;}
+  if(!confirm('Reset ALL labels for "'+currentLabelClient+'" back to defaults?')) return;
+  if(!requireSb('reset labels')) return;
+  try{
+    await sbSet(currentLabelClient+'_field_labels',JSON.stringify({}));
+    currentLabels={...DEFAULT_LABELS};
+    renderLabelEditor();
+    showNotif('All labels reset to defaults.','info');
+  }catch(e){
+    showNotif('Reset failed: '+e.message,'error');
+  }
+}
 
 let _umEditSlug=null;
 function umToggleClient(){
@@ -894,6 +1044,16 @@ function initAdminActions(){
     if(!inp) return;
     toggleClient(decodeURIComponent(inp.dataset.client),inp.checked);
   });
+  const labelsBody=document.getElementById('labels-body');
+  document.querySelector('[data-action="load-labels"]')?.addEventListener('click',()=>loadClientLabels());
+  document.querySelector('[data-action="save-labels"]')?.addEventListener('click',()=>saveClientLabels());
+  document.querySelector('[data-action="reset-labels"]')?.addEventListener('click',()=>resetClientLabels());
+  if(labelsBody){
+    labelsBody.addEventListener('click',(e)=>{
+      const btn=e.target.closest('[data-action="reset-one-label"]');
+      if(btn&&btn.dataset.labelFid) resetOneLabel(btn.dataset.labelFid);
+    });
+  }
   window.openUserModal=openUserModal;
   window.deleteAppUser=deleteAppUser;
   window.removeClient=removeClient;
@@ -911,6 +1071,7 @@ function initAdminActions(){
   document.getElementById('app').style.display='block';
   initAdminActions();
   loadSavedConfig();
+  populateLabelClientSelect();
 })();
 </script>
 </body>
