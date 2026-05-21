@@ -179,6 +179,15 @@ body:not(.tabs-access-ready) .tab-bar{visibility:hidden}
 .field input.conflict-warn{border-color:var(--red);background:#fff8f8}
 .conflict-inline{font-size:11px;color:var(--red);font-weight:600;margin-top:2px;display:none}
 .conflict-inline.show{display:block}
+.conflict-inline.hint-ok{color:var(--green)}
+.conflict-inline.hint-warn{color:var(--red)}
+.field input.hint-ok-border{border-color:var(--green);background:#f6fffa}
+.field input.hint-warn-border{border-color:var(--red);background:#fff8f8}
+.conflict-pair-header.reserial-header{background:linear-gradient(90deg,#e8f5e9,#f1f8e9)}
+.conflict-pair-header.transfer-header{background:linear-gradient(90deg,#e8eef5,#f0f4f8)}
+.conflict-tag-change{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin:8px 0}
+.conflict-tag-change .old-tag{text-decoration:line-through;color:var(--text3);margin-right:8px}
+.conflict-tag-change .new-tag{color:var(--blue)}
 .field textarea{resize:vertical;min-height:64px}
 .field select:disabled{background:var(--surface2);color:var(--text3);cursor:not-allowed}
 
@@ -681,12 +690,20 @@ tbody tr.conflict-row{background:#fff5f5}
     <div class="edit-mode-banner" id="edit-banner3">✏️ Editing row — update fields and click Save Changes</div>
     <div class="form-grid">
       <div class="form-section-label">🏷️ Asset Identification</div>
-      <div class="field"><label>Tag ID <span class="req">*</span></label>
+      <div class="field"><label data-label-for="tr_tagid">Tag ID <span class="req">*</span> <span style="font-size:10.5px;color:var(--text3);font-weight:400">(original / old tag)</span></label>
         <div class="scan-input-wrap">
-          <input id="tr_tagid" placeholder="Original Tag ID" oninput="checkTagConflict('tr_tagid','tab3')">
+          <input id="tr_tagid" placeholder="Original Tag ID" oninput="checkTransferTagId();checkNewTagId()">
           <button type="button" class="scan-btn" onclick="openScanner('tr_tagid')" title="Scan barcode / QR">📷 Scan</button>
         </div>
         <span class="conflict-inline" id="conflict-tr_tagid"></span>
+      </div>
+      <div class="field">
+        <label data-label-for="tr_newtagid">New Tag ID <span style="font-size:10.5px;color:var(--text3);font-weight:400">(only if the physical tag is being replaced)</span></label>
+        <div class="scan-input-wrap">
+          <input id="tr_newtagid" placeholder="New Tag ID — leave blank if tag is not changing" oninput="checkNewTagId()">
+          <button type="button" class="scan-btn" onclick="openScanner('tr_newtagid')" title="Scan barcode / QR">📷 Scan</button>
+        </div>
+        <span class="conflict-inline" id="conflict-tr_newtagid"></span>
       </div>
       <div class="form-section-label">📍 New Location &amp; Assignment</div>
       <div class="field">
@@ -784,7 +801,7 @@ tbody tr.conflict-row{background:#fff5f5}
       <button class="btn btn-danger" onclick="clearAll('tab3')">🗑 Clear</button>
     </div>
     <div class="table-wrap">
-      <table id="table3"><thead><tr><th>#</th><th data-col-for="tr_tagid">Tag ID</th><th data-col-for="tr_city">New City</th><th data-col-for="tr_site">New Site</th><th data-col-for="tr_building">New Building</th><th data-col-for="tr_floor">New Floor</th><th data-col-for="tr_roomtagid">New Room Tag ID</th><th data-col-for="tr_department">New Dept Desc</th><th data-col-for="tr_costcenter">New Dept Code</th><th data-col-for="tr_employee">New Employee</th><th data-col-for="tr_brand">New Brand</th><th data-col-for="tr_model">New Model</th><th data-col-for="tr_serialno">New Serial No.</th><th data-col-for="tr_platenumber">New Plate No.</th><th data-col-for="tr_chassisnumber">New Chassis No.</th><th data-col-for="tr_condition">New Condition</th><th data-col-for="tr_status">New Status</th><th data-col-for="tr_notes">Notes</th><th>Actions</th></tr></thead><tbody id="tbody3"></tbody></table>
+      <table id="table3"><thead><tr><th>#</th><th data-col-for="tr_tagid">Tag ID</th><th data-col-for="tr_newtagid">New Tag ID</th><th data-col-for="tr_city">New City</th><th data-col-for="tr_site">New Site</th><th data-col-for="tr_building">New Building</th><th data-col-for="tr_floor">New Floor</th><th data-col-for="tr_roomtagid">New Room Tag ID</th><th data-col-for="tr_department">New Dept Desc</th><th data-col-for="tr_costcenter">New Dept Code</th><th data-col-for="tr_employee">New Employee</th><th data-col-for="tr_brand">New Brand</th><th data-col-for="tr_model">New Model</th><th data-col-for="tr_serialno">New Serial No.</th><th data-col-for="tr_platenumber">New Plate No.</th><th data-col-for="tr_chassisnumber">New Chassis No.</th><th data-col-for="tr_condition">New Condition</th><th data-col-for="tr_status">New Status</th><th data-col-for="tr_notes">Notes</th><th>Actions</th></tr></thead><tbody id="tbody3"></tbody></table>
     </div>
     <div class="empty-state" id="empty3"><div class="icon">🔄</div><p>No transfers yet.</p></div>
   </div>
@@ -1071,10 +1088,10 @@ const CONFIG={
   },
   tab3:{
     storageKey:CLIENT_ID+'_tr_v3',
-    fieldMap:{tr_tagid:'TagID',tr_city:'New City',tr_site:'New Site',tr_building:'New Building',tr_floor:'New Floor',tr_roomtagid:'New RoomTagID',tr_department:'New Dept Description',tr_costcenter:'New CostCenter',tr_employee:'New Employee',tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No',tr_platenumber:'New Plate Number',tr_chassisnumber:'New Chassis Number',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes'},
+    fieldMap:{tr_tagid:'TagID',tr_newtagid:'New TagID',tr_city:'New City',tr_site:'New Site',tr_building:'New Building',tr_floor:'New Floor',tr_roomtagid:'New RoomTagID',tr_department:'New Dept Description',tr_costcenter:'New CostCenter',tr_employee:'New Employee',tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No',tr_platenumber:'New Plate Number',tr_chassisnumber:'New Chassis Number',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes'},
     required:['tr_tagid'],tagField:'tr_tagid',conditionField:'tr_condition',statusField:'tr_status',ssFields:['tr_city','tr_site','tr_building','tr_floor','tr_roomtagid','tr_department'],
     sheetIndex:2,templateName:'Transfer_Assets_Template.xlsx',label:'Transfer',tabColor:'yellow',
-    colHeaders:['#','Tag ID','New City','New Site','New Building','New Floor','New Room Tag ID','New Dept Desc','New Dept Code','New Employee','New Brand','New Model','New Serial No.','New Plate No.','New Chassis No.','New Condition','New Status','Notes','Actions']
+    colHeaders:['#','Tag ID','New Tag ID','New City','New Site','New Building','New Floor','New Room Tag ID','New Dept Desc','New Dept Code','New Employee','New Brand','New Model','New Serial No.','New Plate No.','New Chassis No.','New Condition','New Status','Notes','Actions']
   }
 };
 const AUDIT_KEY=CLIENT_ID+'_audit_v3';
@@ -1090,7 +1107,7 @@ const DEFAULT_LABELS={
   r_ponumber:'PO Number',r_podate:'PO Date',r_invoicenumber:'Invoice Number',r_invoicedate:'Invoice Date',
   rt_tagid:'Tag ID',rt_employeeno:'Employee No.',rt_employeename:'Employee Name',
   rt_price:'Price',rt_retirementdate:'Retirement Date',rt_notes:'Notes',
-  tr_tagid:'Tag ID',tr_city:'New City',tr_site:'New Site',tr_building:'New Building',tr_floor:'New Floor',
+  tr_tagid:'Tag ID',tr_newtagid:'New Tag ID',tr_city:'New City',tr_site:'New Site',tr_building:'New Building',tr_floor:'New Floor',
   tr_roomtagid:'New Room Tag ID',tr_department:'New Dept Description',tr_costcenter:'New Dept Code',tr_employee:'New Employee',
   tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No.',tr_platenumber:'New Plate No.',
   tr_chassisnumber:'New Chassis No.',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes',
@@ -1099,7 +1116,7 @@ let activeLabels={...DEFAULT_LABELS};
 const TABLE_COL_FIELDS={
   table1:['r_city','r_site','r_building','r_floor','r_roomtagid','r_locationdesc','r_category','r_subcategory','r_productdesc','r_department','r_costcentre','r_tagid','r_employeeno','r_employeename','r_condition','r_status','r_brand','r_model','r_serialno','r_externalid','r_platenumber','r_chassisnumber','r_price','r_dateinservice','r_notes','r_grnnumber','r_grndate','r_ponumber','r_podate','r_invoicenumber','r_invoicedate'],
   table2:['rt_tagid','rt_employeeno','rt_employeename','rt_price','rt_retirementdate','rt_notes'],
-  table3:['tr_tagid','tr_city','tr_site','tr_building','tr_floor','tr_roomtagid','tr_department','tr_costcenter','tr_employee','tr_brand','tr_model','tr_serialno','tr_platenumber','tr_chassisnumber','tr_condition','tr_status','tr_notes'],
+  table3:['tr_tagid','tr_newtagid','tr_city','tr_site','tr_building','tr_floor','tr_roomtagid','tr_department','tr_costcenter','tr_employee','tr_brand','tr_model','tr_serialno','tr_platenumber','tr_chassisnumber','tr_condition','tr_status','tr_notes'],
 };
 function parseLabelsValue(val){
   if(val==null) return {};
@@ -1137,7 +1154,7 @@ function updateConfigHeaders(){
     L.r_invoicenumber,L.r_invoicedate,'Actions'];
   CONFIG.tab2.colHeaders=['#',L.rt_tagid,L.rt_employeeno,L.rt_employeename,L.rt_price,L.rt_retirementdate,L.rt_notes,'Actions'];
   CONFIG.tab3.colHeaders=['#',
-    L.tr_tagid,L.tr_city,L.tr_site,L.tr_building,L.tr_floor,L.tr_roomtagid,L.tr_department,L.tr_costcenter,L.tr_employee,
+    L.tr_tagid,L.tr_newtagid,L.tr_city,L.tr_site,L.tr_building,L.tr_floor,L.tr_roomtagid,L.tr_department,L.tr_costcenter,L.tr_employee,
     L.tr_brand,L.tr_model,L.tr_serialno,L.tr_platenumber,L.tr_chassisnumber,L.tr_condition,L.tr_status,L.tr_notes,'Actions'];
 }
 function applyLabels(){
@@ -1723,6 +1740,10 @@ function finishInitUI(){
       if(!btn) return;
       if(btn.dataset.resolve==='skip'){btn.closest('.conflict-pair').style.display='none';return;}
       if(btn.dataset.resolve==='transfer') resolveTransfer(+btn.dataset.recv,+btn.dataset.tr);
+      if(btn.dataset.resolve==='reserial') resolveReserial(+btn.dataset.recv,+btn.dataset.tr);
+      if(btn.dataset.resolve==='reserial-retired') resolveReserialRetired(+btn.dataset.ret,+btn.dataset.tr);
+      if(btn.dataset.resolve==='transfer-edit') editTransferRow(+btn.dataset.tr);
+      if(btn.dataset.resolve==='transfer-remove') removeTransferRow(+btn.dataset.tr);
       if(btn.dataset.resolve==='retired') resolveRetired(+btn.dataset.recv,+btn.dataset.ret);
     });
   }
@@ -2040,11 +2061,89 @@ function showNotif(msg,type='success'){
 // ══════════════════════════════════════════════════════════════
 function getTagMap(){
   const map={};
+  const add=(tag,tab,idx)=>{
+    if(!tag) return;
+    if(!map[tag]) map[tag]=[];
+    map[tag].push({tab,label:CONFIG[tab].label,idx});
+  };
   ['tab1','tab2','tab3'].forEach(tab=>{
     const tf=CONFIG[tab].tagField;
-    state[tab].forEach((r,i)=>{const tag=(r[tf]||'').trim().toUpperCase();if(!tag) return;if(!map[tag]) map[tag]=[];map[tag].push({tab,label:CONFIG[tab].label,idx:i});});
+    state[tab].forEach((r,i)=>{
+      add((r[tf]||'').trim().toUpperCase(),tab,i);
+      if(tab==='tab3') add((r.tr_newtagid||'').trim().toUpperCase(),tab,i);
+    });
   });
   return map;
+}
+function transferEditExcludeIdx(){
+  return editState.tab3>=0?editState.tab3:-1;
+}
+function tagInReceived(tag){return state.tab1.some(r=>(r.r_tagid||'').trim().toUpperCase()===tag);}
+function tagInRetired(tag){return state.tab2.some(r=>(r.r_tagid||'').trim().toUpperCase()===tag);}
+function tagInTransfers(tag,excludeTrIdx){
+  return state.tab3.some((r,i)=>{
+    if(i===excludeTrIdx) return false;
+    const t1=(r.tr_tagid||'').trim().toUpperCase();
+    const t2=(r.tr_newtagid||'').trim().toUpperCase();
+    return t1===tag||t2===tag;
+  });
+}
+function setTransferHint(el,hint,state,msg){
+  if(!el||!hint) return;
+  el.classList.remove('hint-ok-border','hint-warn-border','conflict-warn');
+  hint.classList.remove('hint-ok','hint-warn','show');
+  if(state==='clear'){
+    return;
+  }
+  hint.textContent=msg;
+  hint.classList.add('show',state==='ok'?'hint-ok':'hint-warn');
+  el.classList.add(state==='ok'?'hint-ok-border':'hint-warn-border');
+}
+function checkTransferTagId(){
+  const el=document.getElementById('tr_tagid');
+  const hint=document.getElementById('conflict-tr_tagid');
+  if(!el||!hint) return;
+  const val=(el.value||'').trim().toUpperCase();
+  const ex=transferEditExcludeIdx();
+  if(!val){setTransferHint(el,hint,'clear');return;}
+  const inReceived=tagInReceived(val);
+  const inRetired=tagInRetired(val);
+  const inTransfers=tagInTransfers(val,ex);
+  if(!inReceived&&!inRetired){
+    setTransferHint(el,hint,'ok','✅ New tag — not found in any existing record');
+  }else if(inTransfers){
+    setTransferHint(el,hint,'warn','⛔ Conflict — this Tag ID already has a transfer entry');
+  }else if(inReceived){
+    setTransferHint(el,hint,'warn','⛔ Conflict — Tag ID exists in active assets. Save then open Resolve Conflicts tab');
+  }else{
+    setTransferHint(el,hint,'warn','⛔ Conflict — Tag ID exists in Retired records. Save then open Resolve Conflicts tab');
+  }
+  checkNewTagId();
+}
+function checkNewTagId(){
+  const el=document.getElementById('tr_newtagid');
+  const hint=document.getElementById('conflict-tr_newtagid');
+  if(!el||!hint) return;
+  const val=(el.value||'').trim().toUpperCase();
+  const oldTag=(document.getElementById('tr_tagid')?.value||'').trim().toUpperCase();
+  const ex=transferEditExcludeIdx();
+  if(!val){setTransferHint(el,hint,'clear');return;}
+  if(val===oldTag){
+    setTransferHint(el,hint,'warn','⛔ New Tag ID cannot be the same as the Old Tag ID');
+    return;
+  }
+  const inReceived=tagInReceived(val);
+  const inRetired=tagInRetired(val);
+  const inTransfers=tagInTransfers(val,ex);
+  if(inReceived){
+    setTransferHint(el,hint,'warn','⛔ Conflict — this Tag ID is already assigned to an active asset');
+  }else if(inRetired){
+    setTransferHint(el,hint,'warn','⛔ Conflict — this Tag ID exists in Retired records');
+  }else if(inTransfers){
+    setTransferHint(el,hint,'warn','⛔ Conflict — this Tag ID is already used in another transfer entry');
+  }else{
+    setTransferHint(el,hint,'ok','✅ Available — not found in any existing record');
+  }
 }
 function getConflicts(){
   return Object.entries(getTagMap()).filter(([,arr])=>new Set(arr.map(x=>x.tab)).size>1).map(([tag,entries])=>({tag,entries}));
@@ -2055,8 +2154,17 @@ function updateConflictCount(){
 }
 function renderRecvSideFields(row){
   const fields=[
-    ['Room Tag ID',row.r_roomtagid],['Category',row.r_category],['Product',row.r_productdesc],
-    ['Condition',row.r_condition],['Status',row.r_status],['Brand',row.r_brand],['Model',row.r_model],
+    ['Tag ID',row.r_tagid],['City',row.r_city],['Site',row.r_site],['Building',row.r_building],['Floor',row.r_floor],
+    ['Room Tag ID',row.r_roomtagid],['Department',row.r_department],['Dept Code',row.r_costcentre],
+    ['Employee',row.r_employeename],['Category',row.r_category],['Product',row.r_productdesc],
+    ['Condition',row.r_condition],['Status',row.r_status],['Brand',row.r_brand],['Model',row.r_model],['Serial No.',row.r_serialno],
+  ];
+  return fields.filter(([,v])=>v).map(([k,v])=>'<div class="conflict-field"><span class="conflict-field-name">'+escHtml(k)+'</span><span class="conflict-field-val">'+escHtml(v)+'</span></div>').join('')||'<div style="color:var(--text3);font-size:12px">No details</div>';
+}
+function renderRetSideFieldsFull(row){
+  const fields=[
+    ['Tag ID',row.rt_tagid],['Emp No.',row.rt_employeeno],['Emp Name',row.rt_employeename],
+    ['Price',row.rt_price],['Retirement Date',row.rt_retirementdate],['Notes',row.rt_notes],
   ];
   return fields.filter(([,v])=>v).map(([k,v])=>'<div class="conflict-field"><span class="conflict-field-name">'+escHtml(k)+'</span><span class="conflict-field-val">'+escHtml(v)+'</span></div>').join('')||'<div style="color:var(--text3);font-size:12px">No details</div>';
 }
@@ -2064,7 +2172,7 @@ function renderRetSideFields(row){
   const fields=[['Emp No.',row.rt_employeeno],['Emp Name',row.rt_employeename],['Retirement Date',row.rt_retirementdate],['Notes',row.rt_notes]];
   return fields.filter(([,v])=>v).map(([k,v])=>'<div class="conflict-field"><span class="conflict-field-name">'+escHtml(k)+'</span><span class="conflict-field-val">'+escHtml(v)+'</span></div>').join('')||'<div style="color:var(--text3);font-size:12px">No details</div>';
 }
-function buildTransferChanges(recvRow,trRow){
+function buildTransferChanges(assetRow,trRow){
   const map=[
     ['r_city','tr_city','City'],['r_site','tr_site','Site'],['r_building','tr_building','Building'],['r_floor','tr_floor','Floor'],
     ['r_roomtagid','tr_roomtagid','Room Tag ID'],['r_department','tr_department','Dept Desc'],['r_costcentre','tr_costcenter','Dept Code'],
@@ -2073,12 +2181,36 @@ function buildTransferChanges(recvRow,trRow){
     ['r_chassisnumber','tr_chassisnumber','Chassis No.'],['r_condition','tr_condition','Condition'],
     ['r_status','tr_status','Status'],
   ];
-  return map.filter(([,tk])=>trRow[tk]).map(([rk,tk,label])=>({label,from:recvRow[rk]||'—',to:trRow[tk]}));
+  const changes=[];
+  map.forEach(([rk,tk,label])=>{
+    const newVal=(trRow[tk]||'').trim();
+    const oldVal=(assetRow[rk]||'').trim();
+    if(newVal&&newVal.toUpperCase()!==oldVal.toUpperCase()){
+      changes.push({label,from:oldVal||'—',to:newVal});
+    }
+  });
+  return changes;
 }
-function renderTransferChanges(recvRow,trRow){
-  const changes=buildTransferChanges(recvRow,trRow);
-  if(!changes.length) return '<div style="color:var(--text3);font-size:12px">No field changes</div>';
-  return changes.map(c=>'<div class="conflict-field"><span class="conflict-field-name">'+escHtml(c.label)+'</span><span class="conflict-field-val"><span style="color:var(--text3);text-decoration:line-through;font-size:11px">'+escHtml(c.from)+'</span>&nbsp;→&nbsp;<span class="changed">'+escHtml(c.to)+'</span></span></div>').join('');
+function renderTransferChanges(assetRow,trRow,opts){
+  const o=opts||{};
+  let html='';
+  if(o.showTagChange&&o.oldTag&&o.newTag){
+    html+='<div class="conflict-field"><span class="conflict-field-name">Tag ID</span><span class="conflict-field-val"><span style="color:var(--text3);text-decoration:line-through;font-size:11px">'+escHtml(o.oldTag)+'</span>&nbsp;→&nbsp;<span class="changed" style="font-weight:700">'+escHtml(o.newTag)+'</span></span></div>';
+  }
+  const changes=buildTransferChanges(assetRow,trRow);
+  if(!changes.length&&!html) return '<div style="color:var(--text3);font-size:12px">No other field changes</div>';
+  html+=changes.map(c=>'<div class="conflict-field"><span class="conflict-field-name">'+escHtml(c.label)+'</span><span class="conflict-field-val"><span style="color:var(--text3);text-decoration:line-through;font-size:11px">'+escHtml(c.from)+'</span>&nbsp;→&nbsp;<span class="changed">'+escHtml(c.to)+'</span></span></div>').join('');
+  return html;
+}
+function applyTransferFieldsToAsset(assetRow,trRow){
+  const fieldMap=[
+    ['r_city','tr_city'],['r_site','tr_site'],['r_building','tr_building'],['r_floor','tr_floor'],
+    ['r_roomtagid','tr_roomtagid'],['r_department','tr_department'],['r_costcentre','tr_costcenter'],['r_employeename','tr_employee'],
+    ['r_brand','tr_brand'],['r_model','tr_model'],['r_serialno','tr_serialno'],
+    ['r_platenumber','tr_platenumber'],['r_chassisnumber','tr_chassisnumber'],
+    ['r_condition','tr_condition'],['r_status','tr_status'],
+  ];
+  fieldMap.forEach(([rk,tk])=>{if(trRow[tk]) assetRow[rk]=trRow[tk];});
 }
 function renderConflictResolver(){
   const conflicts=getConflicts();
@@ -2098,12 +2230,56 @@ function renderConflictResolver(){
       trEntries.forEach(tr=>{
         const recvRow=state.tab1[recv.idx],trRow=state.tab3[tr.idx];
         if(!recvRow||!trRow) return;
+        const oldTag=(trRow.tr_tagid||'').trim().toUpperCase();
+        const newTag=(trRow.tr_newtagid||'').trim().toUpperCase();
+        const recvTag=(recvRow.r_tagid||'').trim().toUpperCase();
+        if(!oldTag||recvTag!==oldTag) return;
+        const hasReserial=newTag!=='';
         const changes=buildTransferChanges(recvRow,trRow);
-        html+='<div class="conflict-pair"><div class="conflict-pair-header"><span class="conflict-pair-tag">'+escHtml(tag)+'</span><span style="font-size:12.5px;font-weight:600;color:var(--red)">Received ↔ Transfer — '+changes.length+' field'+(changes.length!==1?'s':'')+' will update</span></div>';
-        html+='<div class="conflict-pair-body"><div class="conflict-side"><div class="conflict-side-label" style="color:var(--green)">✅ Received (current values)</div><div class="conflict-fields">'+renderRecvSideFields(recvRow)+'</div></div>';
-        html+='<div class="conflict-arrow">→</div><div class="conflict-side"><div class="conflict-side-label" style="color:var(--blue)">🔄 Transfer (new values)</div><div class="conflict-fields">'+renderTransferChanges(recvRow,trRow)+'</div></div></div>';
-        html+='<div class="conflict-actions"><button type="button" class="btn btn-sm" style="background:var(--blue);color:#fff;border:none" data-resolve="transfer" data-recv="'+recv.idx+'" data-tr="'+tr.idx+'">✅ Apply Transfer &amp; Mark Complete</button>';
-        html+='<button type="button" class="btn btn-sm btn-cancel" data-resolve="skip">Skip for now</button><span class="resolve-hint">Received record will be updated · Transfer record will be removed</span></div></div>';
+        if(hasReserial){
+          html+='<div class="conflict-pair"><div class="conflict-pair-header reserial-header"><span class="conflict-pair-tag">🔁 Reserialisation</span><span style="font-size:12.5px;font-weight:600;color:var(--green)">'+escHtml(oldTag)+' → '+escHtml(newTag)+'</span></div>';
+          html+='<div class="conflict-tag-change"><span class="old-tag">'+escHtml(oldTag)+'</span><span>→</span><span class="new-tag">'+escHtml(newTag)+'</span></div>';
+          html+='<div class="conflict-pair-body"><div class="conflict-side"><div class="conflict-side-label" style="color:var(--green)">✅ Current Asset Record</div><div class="conflict-fields">'+renderRecvSideFields(recvRow)+'</div></div>';
+          html+='<div class="conflict-arrow">→</div><div class="conflict-side"><div class="conflict-side-label" style="color:var(--blue)">🔄 Transfer — New Values</div><div class="conflict-fields">'+renderTransferChanges(recvRow,trRow,{showTagChange:true,oldTag,newTag})+'</div></div></div>';
+          html+='<div class="conflict-actions"><button type="button" class="btn btn-sm" style="background:var(--green);color:#fff;border:none" data-resolve="reserial" data-recv="'+recv.idx+'" data-tr="'+tr.idx+'">✅ Update Tag ID '+escHtml(oldTag)+' → '+escHtml(newTag)+' &amp; Apply All Changes</button>';
+          html+='<button type="button" class="btn btn-sm btn-cancel" data-resolve="skip">Skip for now</button><span class="resolve-hint">Asset tag will change · other transfer fields applied · transfer removed</span></div></div>';
+        }else{
+          html+='<div class="conflict-pair"><div class="conflict-pair-header transfer-header"><span class="conflict-pair-tag">'+escHtml(tag)+'</span><span style="font-size:12.5px;font-weight:600;color:var(--blue)">Transfer → Apply Changes</span></div>';
+          html+='<div class="conflict-pair-body"><div class="conflict-side"><div class="conflict-side-label" style="color:var(--green)">✅ Current Asset Record</div><div class="conflict-fields">'+renderRecvSideFields(recvRow)+'</div></div>';
+          html+='<div class="conflict-arrow">→</div><div class="conflict-side"><div class="conflict-side-label" style="color:var(--blue)">🔄 Transfer — New Values</div><div class="conflict-fields">'+renderTransferChanges(recvRow,trRow)+'</div></div></div>';
+          html+='<div class="conflict-actions">';
+          if(changes.length) html+='<button type="button" class="btn btn-sm" style="background:var(--blue);color:#fff;border:none" data-resolve="transfer" data-recv="'+recv.idx+'" data-tr="'+tr.idx+'">✅ Apply Transfer to Asset Record</button>';
+          html+='<button type="button" class="btn btn-sm btn-secondary" data-resolve="transfer-edit" data-tr="'+tr.idx+'">✏️ Edit Transfer — add New Tag ID</button>';
+          html+='<button type="button" class="btn btn-sm btn-danger" data-resolve="transfer-remove" data-tr="'+tr.idx+'">🗑 Remove Transfer</button>';
+          html+='<button type="button" class="btn btn-sm btn-cancel" data-resolve="skip">Skip for now</button>';
+          html+='<span class="resolve-hint">Same tag kept · transfer removed after apply</span></div></div>';
+        }
+      });
+    });
+    retEntries.forEach(ret=>{
+      trEntries.forEach(tr=>{
+        const retRow=state.tab2[ret.idx],trRow=state.tab3[tr.idx];
+        if(!retRow||!trRow) return;
+        const oldTag=(trRow.tr_tagid||'').trim().toUpperCase();
+        const newTag=(trRow.tr_newtagid||'').trim().toUpperCase();
+        const retTag=(retRow.rt_tagid||'').trim().toUpperCase();
+        if(!oldTag||retTag!==oldTag) return;
+        const hasReserial=newTag!=='';
+        if(hasReserial){
+          html+='<div class="conflict-pair"><div class="conflict-pair-header reserial-header"><span class="conflict-pair-tag">🔁 Reserialisation (Retired)</span><span style="font-size:12.5px;font-weight:600;color:var(--green)">'+escHtml(oldTag)+' → '+escHtml(newTag)+'</span></div>';
+          html+='<div class="conflict-tag-change"><span class="old-tag">'+escHtml(oldTag)+'</span><span>→</span><span class="new-tag">'+escHtml(newTag)+'</span></div>';
+          html+='<div class="conflict-pair-body"><div class="conflict-side"><div class="conflict-side-label" style="color:var(--red)">🗃️ Retired Record</div><div class="conflict-fields">'+renderRetSideFieldsFull(retRow)+'</div></div>';
+          html+='<div class="conflict-arrow">→</div><div class="conflict-side"><div class="conflict-side-label" style="color:var(--blue)">🔄 Transfer</div><div class="conflict-fields">'+renderTransferChanges(retRow,trRow,{showTagChange:true,oldTag,newTag})+'</div></div></div>';
+          html+='<div class="conflict-actions"><button type="button" class="btn btn-sm" style="background:var(--green);color:#fff;border:none" data-resolve="reserial-retired" data-ret="'+ret.idx+'" data-tr="'+tr.idx+'">✅ Update Retired Tag '+escHtml(oldTag)+' → '+escHtml(newTag)+'</button>';
+          html+='<button type="button" class="btn btn-sm btn-cancel" data-resolve="skip">Skip for now</button></div></div>';
+        }else{
+          html+='<div class="conflict-pair"><div class="conflict-pair-header transfer-header"><span class="conflict-pair-tag">'+escHtml(tag)+'</span><span style="font-size:12.5px;font-weight:600;color:var(--red)">Transfer ↔ Retired — review</span></div>';
+          html+='<div class="conflict-pair-body"><div class="conflict-side"><div class="conflict-side-label" style="color:var(--red)">🗃️ Retired Record</div><div class="conflict-fields">'+renderRetSideFieldsFull(retRow)+'</div></div>';
+          html+='<div class="conflict-arrow">→</div><div class="conflict-side"><div class="conflict-side-label" style="color:var(--blue)">🔄 Transfer</div><div class="conflict-fields"><div style="font-size:12px;color:var(--text3)">Tag matches a retired asset. Edit transfer or remove if entered by mistake.</div></div></div></div>';
+          html+='<div class="conflict-actions"><button type="button" class="btn btn-sm btn-secondary" data-resolve="transfer-edit" data-tr="'+tr.idx+'">✏️ Edit Transfer</button>';
+          html+='<button type="button" class="btn btn-sm btn-danger" data-resolve="transfer-remove" data-tr="'+tr.idx+'">🗑 Remove Transfer</button>';
+          html+='<button type="button" class="btn btn-sm btn-cancel" data-resolve="skip">Skip for now</button></div></div>';
+        }
       });
     });
     recvEntries.forEach(recv=>{
@@ -2123,24 +2299,77 @@ function renderConflictResolver(){
 function resolveTransfer(recvIdx,trIdx){
   const recvRow=state.tab1[recvIdx],trRow=state.tab3[trIdx];
   if(!recvRow||!trRow) return;
-  const fieldMap=[
-    ['r_city','tr_city'],['r_site','tr_site'],['r_building','tr_building'],['r_floor','tr_floor'],
-    ['r_roomtagid','tr_roomtagid'],['r_department','tr_department'],['r_costcentre','tr_costcenter'],['r_employeename','tr_employee'],
-    ['r_brand','tr_brand'],['r_model','tr_model'],['r_serialno','tr_serialno'],
-    ['r_platenumber','tr_platenumber'],['r_chassisnumber','tr_chassisnumber'],
-    ['r_condition','tr_condition'],['r_status','tr_status'],
-  ];
-  fieldMap.forEach(([rk,tk])=>{if(trRow[tk]) recvRow[rk]=trRow[tk];});
+  const changes=buildTransferChanges(recvRow,trRow);
+  applyTransferFieldsToAsset(recvRow,trRow);
   if(trRow.tr_notes) recvRow.r_notes=(recvRow.r_notes?recvRow.r_notes+' | ':'')+'Transfer: '+trRow.tr_notes;
   const tagId=recvRow.r_tagid||'';
   state.tab3.splice(trIdx,1);
-  logAction('edit','tab1','Transfer resolved — '+tagId+' updated from transfer record',tagId);
-  logAction('delete','tab3','Transfer record removed after conflict resolution',tagId);
+  logAction('edit','tab1','Transfer applied — '+tagId+' ('+changes.length+' field'+(changes.length!==1?'s':'')+' updated)',tagId);
+  logAction('delete','tab3','Transfer record removed after apply',tagId);
   save('tab1');save('tab3');
   renderTable('tab1');renderTable('tab3');
   updateCount('tab1');updateCount('tab3');
   renderConflictResolver();refreshDashboard();
-  showNotif('✅ Transfer applied — received record updated, transfer removed.','success');
+  showNotif('✅ Transfer applied — asset record updated, transfer removed.','success');
+}
+function resolveReserial(recvIdx,trIdx){
+  const recvRow=state.tab1[recvIdx],trRow=state.tab3[trIdx];
+  if(!recvRow||!trRow) return;
+  const oldTag=(recvRow.r_tagid||'').trim();
+  const newTag=(trRow.tr_newtagid||'').trim();
+  if(!newTag){showNotif('No New Tag ID on transfer record.','error');return;}
+  const changes=buildTransferChanges(recvRow,trRow);
+  applyTransferFieldsToAsset(recvRow,trRow);
+  recvRow.r_tagid=newTag;
+  const note='Reserialised: '+oldTag+' → '+newTag;
+  recvRow.r_notes=(recvRow.r_notes?recvRow.r_notes+' | ':'')+note+(trRow.tr_notes?' | Transfer: '+trRow.tr_notes:'');
+  state.tab3.splice(trIdx,1);
+  logAction('edit','tab1',note+' ('+changes.length+' other field'+(changes.length!==1?'s':'')+' updated)',newTag);
+  logAction('delete','tab3','Transfer removed after reserialisation',newTag);
+  save('tab1');save('tab3');
+  renderTable('tab1');renderTable('tab3');
+  updateCount('tab1');updateCount('tab3');
+  renderConflictResolver();refreshDashboard();
+  showNotif('✅ Tag updated '+oldTag+' → '+newTag+' — changes applied.','success');
+}
+function resolveReserialRetired(retIdx,trIdx){
+  const retRow=state.tab2[retIdx],trRow=state.tab3[trIdx];
+  if(!retRow||!trRow) return;
+  const oldTag=(retRow.rt_tagid||'').trim();
+  const newTag=(trRow.tr_newtagid||'').trim();
+  if(!newTag){showNotif('No New Tag ID on transfer record.','error');return;}
+  retRow.rt_tagid=newTag;
+  const note='Reserialised: '+oldTag+' → '+newTag;
+  retRow.rt_notes=(retRow.rt_notes?retRow.rt_notes+' | ':'')+note+(trRow.tr_notes?' | '+trRow.tr_notes:'');
+  state.tab3.splice(trIdx,1);
+  logAction('edit','tab2',note+' (retired record)',newTag);
+  logAction('delete','tab3','Transfer removed after retired reserialisation',newTag);
+  save('tab2');save('tab3');
+  renderTable('tab2');renderTable('tab3');
+  updateCount('tab2');updateCount('tab3');
+  renderConflictResolver();refreshDashboard();
+  showNotif('✅ Retired tag updated '+oldTag+' → '+newTag+'.','success');
+}
+function editTransferRow(trIdx){
+  const btn=document.querySelector('.tab-btn[data-tab-id="tab3"]');
+  switchTab('tab3',btn);
+  editRow('tab3',trIdx);
+  setTimeout(()=>{
+    document.getElementById('tr_newtagid')?.focus();
+    checkTransferTagId();
+    checkNewTagId();
+  },300);
+}
+function removeTransferRow(trIdx){
+  if(!confirm('Remove this transfer record?')) return;
+  const tagId=(state.tab3[trIdx]||{}).tr_tagid||'';
+  state.tab3.splice(trIdx,1);
+  logAction('delete','tab3','Transfer removed from conflict resolver',tagId);
+  save('tab3');
+  renderTable('tab3');
+  updateCount('tab3');
+  renderConflictResolver();refreshDashboard();
+  showNotif('Transfer record removed.','info');
 }
 function resolveRetired(recvIdx,retIdx){
   if(!confirm('Remove the received record? The asset will remain in the Retired tab.')) return;
@@ -2367,6 +2596,12 @@ function clearForm(tab,keepPrevious=false){
   });
   // Reset conflict hints
   if(conf.tagField){const hint=document.getElementById('conflict-'+conf.tagField);const inp=document.getElementById(conf.tagField);if(hint) hint.classList.remove('show');if(inp) inp.classList.remove('conflict-warn');}
+  if(tab==='tab3'){
+    ['tr_tagid','tr_newtagid'].forEach(id=>{
+      const el=document.getElementById(id),hint=document.getElementById('conflict-'+id);
+      if(el&&hint) setTransferHint(el,hint,'clear');
+    });
+  }
 }
 function resetPrimaryBtn(tab){const labels={tab1:'+ Add Asset',tab2:'+ Retire Asset',tab3:'+ Submit Transfer'};document.getElementById('addbtn'+tab.slice(-1)).textContent=labels[tab];}
 
@@ -2434,6 +2669,8 @@ function editRow(tab,idx){
     if(tc&&ts) populateSS('tr_building',refData.locTree[tc]&&refData.locTree[tc][ts]?Object.keys(refData.locTree[tc][ts]).sort():[]);
     if(tc&&ts&&tb) populateSS('tr_floor',refData.locTree[tc]&&refData.locTree[tc][ts]&&refData.locTree[tc][ts][tb]?Object.keys(refData.locTree[tc][ts][tb]).sort((a,b)=>isNaN(a)?1:isNaN(b)?-1:+a-+b):[]);
     if(tc&&ts&&tb&&tf) populateSS('tr_roomtagid',refData.locTree[tc]&&refData.locTree[tc][ts]&&refData.locTree[tc][ts][tb]&&refData.locTree[tc][ts][tb][tf]?[...refData.locTree[tc][ts][tb][tf]].sort():[]);
+    checkTransferTagId();
+    checkNewTagId();
   }
   editState[tab]=idx;
   document.getElementById('edit-banner'+n).classList.add('show');

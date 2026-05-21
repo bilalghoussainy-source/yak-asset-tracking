@@ -841,7 +841,7 @@ const DEFAULT_LABELS={
   r_ponumber:'PO Number',r_podate:'PO Date',r_invoicenumber:'Invoice Number',r_invoicedate:'Invoice Date',
   rt_tagid:'Tag ID',rt_employeeno:'Employee No.',rt_employeename:'Employee Name',
   rt_price:'Price',rt_retirementdate:'Retirement Date',rt_notes:'Notes',
-  tr_tagid:'Tag ID',tr_city:'New City',tr_site:'New Site',tr_building:'New Building',tr_floor:'New Floor',
+  tr_tagid:'Tag ID',tr_newtagid:'New Tag ID',tr_city:'New City',tr_site:'New Site',tr_building:'New Building',tr_floor:'New Floor',
   tr_roomtagid:'New Room Tag ID',tr_department:'New Dept Description',tr_costcenter:'New Dept Code',tr_employee:'New Employee',
   tr_brand:'New Brand',tr_model:'New Model',tr_serialno:'New Serial No.',tr_platenumber:'New Plate No.',
   tr_chassisnumber:'New Chassis No.',tr_condition:'New Condition',tr_status:'New Status',tr_notes:'Notes',
@@ -853,7 +853,7 @@ const LABEL_SECTIONS={
   '🔧 Received — Asset Details':['r_condition','r_status','r_brand','r_model','r_serialno','r_externalid','r_platenumber','r_chassisnumber','r_price','r_dateinservice','r_notes'],
   '📄 Received — Procurement':['r_grnnumber','r_grndate','r_ponumber','r_podate','r_invoicenumber','r_invoicedate'],
   '🗃️ Retired':['rt_tagid','rt_employeeno','rt_employeename','rt_price','rt_retirementdate','rt_notes'],
-  '🔄 Transfer / Updated':['tr_tagid','tr_city','tr_site','tr_building','tr_floor','tr_roomtagid','tr_department','tr_costcenter','tr_employee','tr_brand','tr_model','tr_serialno','tr_platenumber','tr_chassisnumber','tr_condition','tr_status','tr_notes'],
+  '🔄 Transfer / Updated':['tr_tagid','tr_newtagid','tr_city','tr_site','tr_building','tr_floor','tr_roomtagid','tr_department','tr_costcenter','tr_employee','tr_brand','tr_model','tr_serialno','tr_platenumber','tr_chassisnumber','tr_condition','tr_status','tr_notes'],
 };
 let currentLabelClient='';
 let currentLabels={...DEFAULT_LABELS};
