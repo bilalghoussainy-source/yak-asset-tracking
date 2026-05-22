@@ -51,6 +51,13 @@ Users live in the **same** `asset_tracker` (or your `SUPABASE_TABLE`) key–valu
    ```
 4. Open [http://localhost:3000/](http://localhost:3000/) to sign in, or go directly to [http://localhost:3000/admin](http://localhost:3000/admin) (you will be bounced to `/` if not signed in as admin).
 
+**Login UI not updating locally?**
+
+- The dev server serves **`dist/`** only (run `npm run build` or `npm run dev`, which builds first).
+- Use **`http://localhost:3000/`** — not `/EIAC` (that is the client app with a different screen), not the standalone `.html` file in the repo root, and not the Vercel URL until you deploy.
+- If port 3000 was already in use, another app may be answering — stop it, then run `npm run dev` from this project. The terminal should print `Serving: ...\dist` and an `index.html built:` timestamp.
+- If you are sent straight to `/admin` or `/EIAC`, you are already signed in: open DevTools → Application → Session storage → delete **`app_session`**, then reload `/`.
+
 ## Deploy to Vercel
 
 1. Push this repo to GitHub and import in [Vercel](https://vercel.com/new).

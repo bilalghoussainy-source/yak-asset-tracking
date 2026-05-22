@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Asset Tracking</title>
+<title>SPAN — Asset Tracking</title>
+<link rel="icon" href="/span-logo.png" type="image/png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 :root{
   --bg:#f4f6f9;--surface:#fff;--surface2:#f0f2f6;
   --border:#dde1ea;--border2:#c8cdd9;
@@ -29,22 +30,61 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 #lock-screen.show{display:flex}
 #portal-login-screen{display:none;position:fixed;inset:0;background:var(--blue);z-index:9998;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
 #portal-login-screen.show{display:flex}
-#root-auth-screen{display:none;position:fixed;inset:0;background:linear-gradient(160deg,var(--blue) 0%,#3d4f63 100%);z-index:10002;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-#root-auth-screen.show{display:flex}
+#root-auth-screen{display:none;position:fixed;inset:0;z-index:10002;background:#f0f2f6}
+#root-auth-screen.show{display:block}
 body.root-auth-mode #sync-banner,
 body.root-auth-mode header,
 body.root-auth-mode .tab-bar,
 body.root-auth-mode .main{display:none!important}
 body.root-auth-mode #config-warning{display:none!important}
-.login-card{background:#fff;border-radius:14px;padding:32px 36px;width:100%;max-width:400px;box-shadow:var(--shadow-md);text-align:center}
-.login-card .login-logo{display:block;width:min(240px,85%);height:auto;margin:0 auto 22px;object-fit:contain}
-.login-card h2{font-size:20px;font-weight:700;color:var(--blue);margin:0 0 6px;text-align:center}
-.login-card .login-sub{font-size:13px;color:var(--text3);text-align:center;margin:0 auto 22px;max-width:300px;line-height:1.5}
-.login-card .field{margin-bottom:14px;text-align:left}
-.login-card .field label{display:block;text-align:left}
-.login-card .portal-err{text-align:left}
-.login-card .btn-login{width:100%;margin-top:6px;padding:11px;border:none;border-radius:7px;background:var(--blue);color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;transition:background 0.14s}
-.login-card .btn-login:hover{background:var(--blue-dk)}
+body.root-auth-mode{background:#f0f2f6}
+.root-auth-layout{display:flex;min-height:100vh;width:100%}
+.root-auth-brand{position:relative;width:42%;min-height:100vh;background:#576A84;display:flex;align-items:center;justify-content:center;padding:48px 40px;overflow:hidden;flex-shrink:0}
+.root-auth-brand-circle{position:absolute;border-radius:50%;pointer-events:none}
+.root-auth-brand-circle--bl{width:260px;height:260px;bottom:-80px;left:-80px;background:rgba(0,0,0,0.12)}
+.root-auth-brand-circle--tr{width:200px;height:200px;top:-60px;right:-50px;background:rgba(0,0,0,0.08)}
+.root-auth-brand-inner{position:relative;z-index:1;text-align:center;max-width:320px}
+.root-auth-brand-logo{width:260px;max-width:92%;height:auto;display:block;margin:0 auto 28px}
+.root-auth-accent-line{width:36px;height:3px;background:#FFC000;border-radius:2px;margin:0 auto 20px}
+.root-auth-brand-title{font-size:22px;font-weight:500;color:#fff;letter-spacing:-0.3px;margin:0 0 10px;line-height:1.3}
+.root-auth-brand-sub{font-size:13px;color:rgba(255,255,255,0.55);line-height:1.7;max-width:190px;margin:0 auto}
+.root-auth-form-panel{flex:1;min-height:100vh;background:#fff;display:flex;align-items:center;justify-content:center;padding:48px 44px}
+.root-auth-form-inner{width:100%;max-width:300px}
+.root-auth-greeting{margin-bottom:32px}
+.root-auth-greeting h2{font-size:22px;font-weight:500;color:#1a1d2e;letter-spacing:-0.4px;margin:0 0 6px}
+.root-auth-greeting p{font-size:13.5px;color:#7a8299;margin:0;line-height:1.5}
+.root-auth-fields{display:flex;flex-direction:column;gap:20px}
+.root-auth-field label{display:block;font-size:11.5px;font-weight:500;color:#576A84;letter-spacing:0.3px;margin-bottom:6px}
+.root-auth-input-wrap{position:relative}
+.root-auth-input-wrap input{width:100%;font-family:'Inter',sans-serif;font-size:13.5px;color:#1a1d2e;background:#fafbfc;border:1.5px solid #e0e4ed;border-radius:8px;outline:none;transition:border-color 0.15s,background 0.15s,box-shadow 0.15s}
+.root-auth-input-wrap input::placeholder{color:#b0b8cc}
+.root-auth-input-wrap input:focus{border-color:#576A84;background:#fff;box-shadow:0 0 0 3px rgba(87,106,132,0.12)}
+.root-auth-field.login-field--error .root-auth-input-wrap input{border-color:#e74c3c;background:#fff}
+.root-auth-input-wrap--user input{padding:10px 12px 10px 36px}
+.root-auth-input-wrap--pass input{padding:10px 36px}
+.root-auth-field-icon{position:absolute;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#b0b8cc;pointer-events:none;display:flex;align-items:center;justify-content:center}
+.root-auth-field-icon--left{left:11px}
+.root-auth-field-icon--right{right:11px;cursor:pointer;pointer-events:auto;background:none;border:none;padding:0}
+.root-auth-field-icon--right:hover{color:#576A84}
+.root-auth-field-icon--right svg{display:block}
+.root-auth-field-icon--right .icon-eye-off{display:none}
+.root-auth-field-icon--right.is-visible .icon-eye{display:none}
+.root-auth-field-icon--right.is-visible .icon-eye-off{display:block}
+.root-auth-submit{margin-top:8px;width:100%;background:#576A84;color:#fff;border:none;border-bottom:3px solid #FFC000;border-radius:8px;padding:12px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;letter-spacing:0.2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s,opacity 0.15s}
+.root-auth-submit:hover:not(:disabled){background:#3d4f63}
+.root-auth-submit:disabled{opacity:0.75;cursor:not-allowed}
+.root-auth-submit.is-loading{opacity:0.85}
+.root-auth-submit svg{flex-shrink:0}
+.root-auth-inline-err{display:none;color:#c0392b;font-size:12.5px;margin-top:10px;line-height:1.45}
+.root-auth-inline-err.show{display:block}
+.root-auth-footer{margin-top:28px;padding-top:20px;border-top:1px solid #f0f2f6;display:flex;align-items:center;gap:6px;font-size:11.5px;color:#b0b8cc}
+.root-auth-footer svg{flex-shrink:0;width:13px;height:13px;color:#b0b8cc}
+.portal-err.show{display:block}
+@media(max-width:640px){
+  .root-auth-layout{flex-direction:column}
+  .root-auth-brand{width:100%;min-height:auto;padding:36px 28px}
+  .root-auth-form-panel{min-height:auto;padding:36px 28px}
+}
 .portal-card{background:#fff;border-radius:14px;padding:28px 26px;width:100%;max-width:380px;box-shadow:var(--shadow-md)}
 .portal-card h2{font-size:18px;font-weight:700;color:var(--blue);margin-bottom:4px;text-align:center}
 .portal-card .portal-sub{font-size:12.5px;color:var(--text3);text-align:center;margin-bottom:18px}
@@ -338,14 +378,58 @@ tbody tr.conflict-row{background:#fff5f5}
 
 <!-- ROOT LOGIN (/) — administrator → /admin, client → /{clientId} -->
 <div id="root-auth-screen">
-  <div class="login-card">
-    <img src="/span-logo.png" alt="SPAN" class="login-logo" width="240" height="80">
-    <h2>Asset Tracking</h2>
-    <p class="login-sub">Login to continue</p>
-    <div class="portal-err" id="root-auth-err"></div>
-    <div class="field"><label>Login username</label><input type="text" id="root-auth-user" autocomplete="username" placeholder="From Admin App users Login column" onkeydown="if(event.key==='Enter')submitRootLogin()"></div>
-    <div class="field"><label>Password</label><input type="password" id="root-auth-pw" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')submitRootLogin()"></div>
-    <button type="button" class="btn-login" onclick="submitRootLogin()">Login</button>
+  <div class="root-auth-layout">
+    <aside class="root-auth-brand" aria-hidden="true">
+      <div class="root-auth-brand-circle root-auth-brand-circle--bl"></div>
+      <div class="root-auth-brand-circle root-auth-brand-circle--tr"></div>
+      <div class="root-auth-brand-inner">
+        <img src="/span-logo-tagline-v2.png" alt="SPAN — Smarter, Safer, Swifter" class="root-auth-brand-logo" width="260">
+        <div class="root-auth-accent-line"></div>
+        <h1 class="root-auth-brand-title">Asset Tracking Tool</h1>
+        <p class="root-auth-brand-sub">Receive, transfer and retire assets across all sites</p>
+      </div>
+    </aside>
+    <main class="root-auth-form-panel">
+      <div class="root-auth-form-inner">
+        <div class="root-auth-greeting">
+          <h2>Sign in</h2>
+          <p>Use your credentials from the admin panel</p>
+        </div>
+        <div class="root-auth-fields">
+          <div class="root-auth-field" id="root-auth-field-user">
+            <label for="root-auth-user">Username</label>
+            <div class="root-auth-input-wrap root-auth-input-wrap--user">
+              <span class="root-auth-field-icon root-auth-field-icon--left" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input type="text" id="root-auth-user" autocomplete="username" placeholder="Enter username">
+            </div>
+          </div>
+          <div class="root-auth-field" id="root-auth-field-pw">
+            <label for="root-auth-pw">Password</label>
+            <div class="root-auth-input-wrap root-auth-input-wrap--pass">
+              <span class="root-auth-field-icon root-auth-field-icon--left" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input type="password" id="root-auth-pw" autocomplete="current-password" placeholder="Enter password">
+              <button type="button" class="root-auth-field-icon root-auth-field-icon--right" id="root-auth-pw-toggle" aria-label="Show password" onclick="toggleRootPwVisibility()">
+                <span class="icon-eye"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                <span class="icon-eye-off"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="root-auth-submit" id="root-auth-submit-btn" onclick="submitRootLogin()">
+          <span class="root-auth-btn-text">Sign in</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+        <p class="root-auth-inline-err" id="root-auth-err" role="alert"></p>
+        <div class="root-auth-footer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Restricted to authorised users only</span>
+        </div>
+      </div>
+    </main>
   </div>
 </div>
 
@@ -1824,15 +1908,46 @@ function accountLogout(){
   location.href='/'+(location.search||'');
 }
 
+function setRootLoginLoading(on){
+  const btn=document.getElementById('root-auth-submit-btn');
+  if(!btn)return;
+  btn.disabled=!!on;
+  btn.classList.toggle('is-loading',!!on);
+  const t=btn.querySelector('.root-auth-btn-text');
+  if(t)t.textContent=on?'Signing in…':'Sign in';
+}
+function setRootLoginFieldError(on){
+  document.getElementById('root-auth-field-user')?.classList.toggle('login-field--error',!!on);
+  document.getElementById('root-auth-field-pw')?.classList.toggle('login-field--error',!!on);
+}
+function clearRootLoginFieldErrors(){
+  setRootLoginFieldError(false);
+}
+function showRootAuthErr(msg,fieldErr){
+  const errEl=document.getElementById('root-auth-err');
+  if(errEl){errEl.textContent=msg;errEl.classList.add('show');}
+  if(fieldErr!==false)setRootLoginFieldError(true);
+}
+function toggleRootPwVisibility(){
+  const inp=document.getElementById('root-auth-pw');
+  const btn=document.getElementById('root-auth-pw-toggle');
+  if(!inp||!btn)return;
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  btn.setAttribute('aria-label',show?'Hide password':'Show password');
+  btn.classList.toggle('is-visible',show);
+}
+
 async function submitRootLogin(){
   const errEl=document.getElementById('root-auth-err');
-  errEl.classList.remove('show');
-  errEl.textContent='';
+  if(errEl){errEl.classList.remove('show');errEl.textContent='';}
+  clearRootLoginFieldErrors();
   const u=(document.getElementById('root-auth-user').value||'').trim();
   const p=document.getElementById('root-auth-pw').value||'';
-  if(!u||!p){errEl.textContent='Enter username and password.';errEl.classList.add('show');return;}
+  if(!u||!p){showRootAuthErr('Enter username and password.');return;}
   const slug=normalizeUserSlug(u);
-  if(!slug){errEl.textContent='Invalid username.';errEl.classList.add('show');return;}
+  if(!slug){showRootAuthErr('Invalid username.');return;}
+  setRootLoginLoading(true);
   try{
     const bootUser=String(BOOTSTRAP_ADMIN_USER||'admin').trim();
     const bootPw=String(ADMIN_PASSWORD_BOOTSTRAP||'');
@@ -1843,34 +1958,31 @@ async function submitRootLogin(){
       return;
     }
     if(bootUser&&u.toLowerCase()===bootUser.toLowerCase()&&!bootPw){
-      errEl.textContent='Admin password was not configured at deploy time. In Vercel: Project → Settings → Environment Variables → add ADMIN_PASSWORD (and redeploy). Locally: set it in .env.local, then run npm run build.';
-      errEl.classList.add('show');
+      showRootAuthErr('Admin password was not configured at deploy time. In Vercel: Project → Settings → Environment Variables → add ADMIN_PASSWORD (and redeploy). Locally: set it in .env.local, then run npm run build.',false);
       return;
     }
     if(bootUser&&u.toLowerCase()===bootUser.toLowerCase()&&bootPw){
-      errEl.textContent='Wrong password for bootstrap admin ('+bootUser+'). Check ADMIN_PASSWORD in .env.local, then npm run build.';
-      errEl.classList.add('show');
+      showRootAuthErr('Wrong password for bootstrap admin ('+bootUser+'). Check ADMIN_PASSWORD in .env.local, then npm run build.');
       return;
     }
-    if(!USE_SUPABASE){errEl.textContent='Server not configured.';errEl.classList.add('show');return;}
+    if(!USE_SUPABASE){showRootAuthErr('Server not configured.',false);return;}
     const row=await sbGetGlobal('_auth_user_'+slug);
-    if(!row||row.value==null){errEl.textContent='Unknown user. Create this account in Admin → App users, or sign in as '+bootUser+' (bootstrap).';errEl.classList.add('show');return;}
+    if(!row||row.value==null){showRootAuthErr('Unknown user. Create this account in Admin → App users, or sign in as '+bootUser+' (bootstrap).');return;}
     const j=parseAuthUserValue(row.value);
-    if(!j){errEl.textContent='Account data is invalid. In Admin, edit this user and set a new password.';errEl.classList.add('show');return;}
+    if(!j){showRootAuthErr('Account data is invalid. In Admin, edit this user and set a new password.');return;}
     const role=String(j.role||'');
     const clientId=j.clientId!=null?String(j.clientId).trim():'';
     const displayUsername=String(j.displayUsername||u).trim();
     const expectedHash=String(j.passwordHash||'').trim();
-    if(!expectedHash||(role!=='admin'&&role!=='client')){errEl.textContent='Invalid username or password.';errEl.classList.add('show');return;}
+    if(!expectedHash||(role!=='admin'&&role!=='client')){showRootAuthErr('Invalid username or password.');return;}
     const h=await authUserPwdHash(slug,p);
     if(h!==expectedHash){
       const tried=u!==slug?' (login username is stored as "'+slug+'")':'';
-      errEl.textContent='Wrong password for login username "'+slug+'"'+tried+'. Use the Login column from Admin (not display name), and the exact password you entered when saving the user. Or open Admin, edit this user, and set a new password.';
-      errEl.classList.add('show');
+      showRootAuthErr('Wrong password for login username "'+slug+'"'+tried+'. Use the Login column from Admin (not display name), and the exact password you entered when saving the user. Or open Admin, edit this user, and set a new password.');
       return;
     }
     if(role==='client'){
-      if(!clientId||!/^[a-zA-Z0-9_-]{1,64}$/.test(clientId)){errEl.textContent='User account is misconfigured (no client).';errEl.classList.add('show');return;}
+      if(!clientId||!/^[a-zA-Z0-9_-]{1,64}$/.test(clientId)){showRootAuthErr('User account is misconfigured (no client).');return;}
       writeAppSession({slug,role:'client',clientId,displayUsername,tabs:normalizeTabAccess(j.tabs)});
       const next=new URLSearchParams(location.search).get('next')||'';
       if(next&&next.startsWith('/')&&next.split('/').filter(Boolean)[0]===clientId) location.href=next;
@@ -1883,11 +1995,11 @@ async function submitRootLogin(){
       location.href=next.startsWith('/')?next:'/admin';
       return;
     }
-    errEl.textContent='Invalid username or password.';
-    errEl.classList.add('show');
+    showRootAuthErr('Invalid username or password.');
   }catch(e){
-    errEl.textContent=(e.message||String(e));
-    errEl.classList.add('show');
+    showRootAuthErr(e.message||String(e),false);
+  }finally{
+    setRootLoginLoading(false);
   }
 }
 
@@ -1897,10 +2009,13 @@ function initRootLogin(){
   if(sess&&sess.role==='client'&&sess.clientId){location.replace('/'+sess.clientId);return;}
   document.body.classList.add('root-auth-mode');
   document.getElementById('root-auth-screen').classList.add('show');
+  const onEnter=(e)=>{if(e.key==='Enter')submitRootLogin();};
+  document.getElementById('root-auth-user')?.addEventListener('keydown',onEnter);
+  document.getElementById('root-auth-pw')?.addEventListener('keydown',onEnter);
+  document.getElementById('root-auth-user')?.addEventListener('input',clearRootLoginFieldErrors);
+  document.getElementById('root-auth-pw')?.addEventListener('input',clearRootLoginFieldErrors);
   if(!USE_SUPABASE){
-    const e=document.getElementById('root-auth-err');
-    e.textContent='Configure SUPABASE_URL and SUPABASE_ANON_KEY (except bootstrap admin if env password is set).';
-    e.classList.add('show');
+    showRootAuthErr('Configure SUPABASE_URL and SUPABASE_ANON_KEY (except bootstrap admin if env password is set).',false);
   }
 }
 

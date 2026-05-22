@@ -48,7 +48,8 @@ const server = http.createServer((req, res) => {
   if (adminHtml && (urlPath === '/admin' || urlPath === '/admin/')) {
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
     });
     res.end(adminHtml);
     return;
@@ -59,16 +60,20 @@ const server = http.createServer((req, res) => {
 
   res.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    Pragma: 'no-cache',
   });
   res.end(readIndexHtml());
 });
 
 server.listen(port, () => {
   const hasAdmin = fs.existsSync(adminPath);
+  const builtAt = fs.statSync(indexPath).mtime.toISOString();
   console.log(`Asset Tracking — local server`);
-  console.log(`  http://localhost:${port}/`);
+  console.log(`  Serving: ${root}`);
+  console.log(`  index.html built: ${builtAt}`);
+  console.log(`  http://localhost:${port}/          ← login page (new UI)`);
   if (hasAdmin) console.log(`  http://localhost:${port}/admin`);
-  console.log(`  http://localhost:${port}/EIAC`);
+  console.log(`  http://localhost:${port}/EIAC      ← client app (not root login)`);
   console.log('Press Ctrl+C to stop.');
 });
