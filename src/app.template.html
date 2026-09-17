@@ -921,7 +921,6 @@ tbody tr.conflict-row{background:#fff5f5}
       <button class="al-chip" onclick="filterAudit('delete',this)">Deleted</button>
       <button class="al-chip" onclick="filterAudit('import',this)">Imported</button>
       <button class="al-chip" onclick="filterAudit('conflict',this)" style="background:var(--red-lt);color:var(--red);border-color:#fca5a5">⚠ Conflicts</button>
-      <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="clearAuditLog()">🗑 Clear Log</button>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div class="search-box" style="max-width:320px;flex:1"><span class="search-icon">🔍</span><input type="text" id="audit-search" placeholder="Search log by tag, action, tab, note..." oninput="renderAuditLog()" style="width:100%"></div>
@@ -1779,6 +1778,8 @@ document.addEventListener('click',e=>{
 // ══════════════════════════════════════════════════════════════
 const state={tab1:[],tab2:[],tab3:[]};
 const editState={tab1:-1,tab2:-1,tab3:-1};
+// Declared early so loadSupabaseTablesAndRef / poll can set it; save() uses it.
+const _baselineCounts={tab1:0,tab2:0,tab3:0};
 let auditLog=[];
 let pendingImport={tab:null,rows:[]};
 let auditFilter='all';
@@ -1793,6 +1794,10 @@ async function loadSupabaseTablesAndRef(){
   if(recvRow && recvRow.value){const d=JSON.parse(recvRow.value);state.tab1=d.rows||[];}
   if(retRow  && retRow.value) {const d=JSON.parse(retRow.value); state.tab2=d.rows||[];}
   if(trRow   && trRow.value)  {const d=JSON.parse(trRow.value);  state.tab3=d.rows||[];}
+  // Capture baseline — used later to warn if a save would reduce record count
+  _baselineCounts.tab1=state.tab1.length;
+  _baselineCounts.tab2=state.tab2.length;
+  _baselineCounts.tab3=state.tab3.length;
   const tsList=[recvRow,retRow,trRow].filter(Boolean).map(r=>new Date(r.updated_at).getTime());
   if(tsList.length) _lastSyncTs=Math.max(...tsList);
   const auditRow=await sbGet('audit');
@@ -1860,6 +1865,9 @@ function startSupabasePoll(){
         if(recvRow && recvRow.value){const d=JSON.parse(recvRow.value);state.tab1=d.rows||[];}
         if(retRow  && retRow.value) {const d=JSON.parse(retRow.value); state.tab2=d.rows||[];}
         if(trRow   && trRow.value)  {const d=JSON.parse(trRow.value);  state.tab3=d.rows||[];}
+        _baselineCounts.tab1=state.tab1.length;
+        _baselineCounts.tab2=state.tab2.length;
+        _baselineCounts.tab3=state.tab3.length;
         ['tab1','tab2','tab3'].forEach(tab=>{renderTable(tab);updateCount(tab);});
         refreshDashboard();
         showNotif('🔄 Data updated by teammate','info');
@@ -2111,6 +2119,7 @@ function loadFromLocal(){
 const _saveTimers={tab1:null,tab2:null,tab3:null};
 // Map tab → Supabase row key suffix
 const SB_ROW={tab1:'received',tab2:'retired',tab3:'transfers'};
+// _baselineCounts is declared with state (above) and set after Supabase load.
 
 function save(tab){
   // 1. Save this tab to its own localStorage key (instant)
@@ -2121,7 +2130,44 @@ function save(tab){
     _saveTimers[tab]=setTimeout(async()=>{
       setSyncUI('busy','Saving…');
       try{
+        const newCount=state[tab].length;
+        const baseCount=_baselineCounts[tab];
+
+        // Warn if about to save fewer records than what was loaded at startup
+        if(newCount<baseCount){
+          const tabLabel=CONFIG[tab].label;
+          const proceed=confirm(
+            '⚠️ Warning\n\n'+
+            'You are about to save '+newCount+' '+tabLabel+
+            ' record'+(newCount!==1?'s':'')+
+            ' but '+baseCount+' were loaded when you opened the tool.\n\n'+
+            'This may overwrite data added by a teammate.\n\n'+
+            'Press OK to save anyway, or Cancel to reload the latest data from the server.'
+          );
+          if(!proceed){
+            setSyncUI('busy','Reloading from server…');
+            try{
+              const row=await sbGet(SB_ROW[tab]);
+              if(row&&row.value){
+                const d=JSON.parse(row.value);
+                state[tab]=d.rows||[];
+                localStorage.setItem(CONFIG[tab].storageKey,JSON.stringify(state[tab]));
+                _baselineCounts[tab]=state[tab].length;
+                renderTable(tab);
+                updateCount(tab);
+                refreshDashboard();
+              }
+              setSyncUI('ok','Reloaded from server');
+              showNotif('Data reloaded from server — your change was not saved.','info');
+            }catch(e){
+              setSyncUI('err','Reload failed: '+e.message);
+            }
+            return;
+          }
+        }
+
         await sbSet(SB_ROW[tab],JSON.stringify({rows:state[tab],ts:Date.now()}));
+        _baselineCounts[tab]=state[tab].length;
         setSyncUI('ok','Saved');
       }catch(err){setSyncUI('err','Save failed: '+err.message);console.error('Supabase save error:',err);}
     },800);
