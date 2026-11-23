@@ -462,26 +462,38 @@ function doLogout(){
 
 let SB={url:'',key:'',table:'asset_tracker'};
 
-function connectSupabase(){
-  if(HAS_BUILT_SB){
-    ensureDeploySupabase();
-    testConnection(false);
-    showNotif('Using Supabase from Vercel deploy (same database as login page).','info');
-    return;
-  }
+function readConfigFromForm(){
   SB.url=(document.getElementById('cfg-url').value||'').trim().replace(/\/$/,'');
   SB.key=(document.getElementById('cfg-key').value||'').trim();
   SB.table=(document.getElementById('cfg-table').value||'asset_tracker').trim();
+}
+
+function connectSupabase(){
+  // Always use what is in the form so a corrected key can be tested without redeploy.
+  readConfigFromForm();
   if(!SB.url||!SB.key){showNotif('Please enter both URL and Key.','error');return;}
-  localStorage.setItem('admin_sb_config',JSON.stringify(SB));
+  if(!HAS_BUILT_SB) localStorage.setItem('admin_sb_config',JSON.stringify(SB));
+  else if(HAS_BUILT_SB&&SB.key!==BUILT_SB.key){
+    showNotif('Using the key typed above for this session. Update SUPABASE_ANON_KEY in Vercel and redeploy to make it permanent.','info');
+  } else if(HAS_BUILT_SB){
+    showNotif('Using Supabase from Vercel deploy (same database as login page).','info');
+  }
   testConnection(false);
 }
 
 async function testConnection(silent=false){
+  // Prefer current form values when the user clicked Test / Connect.
+  if(!silent) readConfigFromForm();
   if(!SB.url||!SB.key){if(!silent) showNotif('No connection config set.','error');return;}
   setConnStatus('checking','Connecting…');
+  const ctrl=typeof AbortController!=='undefined'?new AbortController():null;
+  const timer=ctrl?setTimeout(()=>ctrl.abort(),12000):null;
   try{
-    const r=await fetch(`${SB.url}/rest/v1/${SB.table}?limit=1`,{headers:sbH(false)});
+    const r=await fetch(`${SB.url}/rest/v1/${SB.table}?select=*&limit=1`,{
+      headers:sbH(false),
+      signal:ctrl?ctrl.signal:undefined,
+    });
+    if(timer) clearTimeout(timer);
     if(r.ok||r.status===416){
       setConnStatus('ok','Connected');
       document.getElementById('setup-guide').style.display='none';
@@ -490,11 +502,22 @@ async function testConnection(silent=false){
       loadClients();
       loadUsersTable();
     } else {
-      throw new Error('HTTP '+r.status);
+      const txt=await r.text().catch(()=>'');
+      let detail='HTTP '+r.status;
+      try{const j=JSON.parse(txt);if(j.message) detail+=' — '+j.message;else if(j.error) detail+=' — '+j.error;}catch(e){if(txt) detail+=' — '+txt.slice(0,160);}
+      if(r.status===401) detail+=' (check SUPABASE_ANON_KEY / publishable key in Vercel)';
+      throw new Error(detail);
     }
   }catch(err){
+    if(timer) clearTimeout(timer);
+    const aborted=err&&(err.name==='AbortError'||/abort/i.test(String(err.message||'')));
+    const msg=aborted
+      ? 'Timed out after 12s — Supabase did not respond. Verify the project is active and the API key is a valid anon/publishable key from this project.'
+      : (err.message||String(err));
     setConnStatus('err','Connection failed');
-    if(!silent) showNotif('Connection failed: '+err.message,'error');
+    const cr=document.getElementById('conn-result');
+    if(cr) cr.textContent='❌ Failed — '+msg;
+    if(!silent) showNotif('Connection failed: '+msg,'error');
   }
 }
 
