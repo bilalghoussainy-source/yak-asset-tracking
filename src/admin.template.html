@@ -481,7 +481,7 @@ async function testConnection(silent=false){
   if(!SB.url||!SB.key){if(!silent) showNotif('No connection config set.','error');return;}
   setConnStatus('checking','Connecting…');
   try{
-    const r=await fetch(`${SB.url}/rest/v1/${SB.table}?limit=1`,{headers:sbH({'Accept':'application/json'})});
+    const r=await fetch(`${SB.url}/rest/v1/${SB.table}?limit=1`,{headers:sbH(false)});
     if(r.ok||r.status===416){
       setConnStatus('ok','Connected');
       document.getElementById('setup-guide').style.display='none';
@@ -507,15 +507,11 @@ function setConnStatus(status,msg){
   if(cr) cr.textContent=status==='ok'?'✅ Connected':status==='err'?'❌ Failed':'';
 }
 
-function sbH(extra){
-  const h={
-    'apikey':SB.key,
-    'Authorization':'Bearer '+SB.key,
-    'Content-Type':'application/json',
-    'Prefer':'resolution=merge-duplicates',
-  };
+function sbH(isWrite=false){
+  const h={'apikey':SB.key,'Authorization':'Bearer '+SB.key};
+  if(isWrite){h['Content-Type']='application/json';h['Prefer']='resolution=merge-duplicates';}
   if(SB.key&&(SB.key.startsWith('sb_publishable_')||SB.key.startsWith('sb_secret_'))) h['sb-publishable-key']=SB.key;
-  return Object.assign(h,extra||{});
+  return h;
 }
 
 async function sbErr(prefix,r){
@@ -525,19 +521,19 @@ async function sbErr(prefix,r){
   return new Error(msg);
 }
 async function sbGet(key){
-  const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}&select=key,value,updated_at`,{headers:sbH({'Accept':'application/json'})});
+  const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}&select=key,value,updated_at`,{headers:sbH(false)});
   if(r.status===406||r.status===416) return null;
   if(!r.ok) throw await sbErr('GET',r);
   const rows=await r.json(); return rows.length?rows[0]:null;
 }
 async function sbSet(key,value){
-  const r=await fetch(`${SB.url}/rest/v1/${SB.table}`,{method:'POST',headers:sbH({'Accept':'application/json'}),body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});
+  const r=await fetch(`${SB.url}/rest/v1/${SB.table}`,{method:'POST',headers:sbH(true),body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});
   if(!r.ok) throw await sbErr('SET',r);
 }
 async function sbDelete(key){
   const r=await fetch(`${SB.url}/rest/v1/${SB.table}?key=eq.${encodeURIComponent(key)}`,{
     method:'DELETE',
-    headers:sbH({'Accept':'application/json','Prefer':'return=representation'}),
+    headers:sbH(false),
   });
   if(!r.ok) throw await sbErr('DELETE',r);
   if(r.status===204) return;
